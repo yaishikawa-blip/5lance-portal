@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function emailDomain() {
+      return request.auth.token.email.split('@')[1].lower();
+    }
+    // 許可するメールドメインをここに列挙してください（firebase-config.js の
+    // window.__ALLOWED_DOMAINS と同じ内容にしてください）。
+    function isAllowedDomain() {
+      return isSignedIn() && emailDomain() in ['5lance.co.jp'];
+    }
+    // 管理者は "admins" コレクションに自分のUID（Firebase AuthのUID）の
+    // ドキュメントを1つ作成すると付与されます。Firebaseコンソールの
+    // Firestore画面から手動で追加してください（アプリの管理者パスワード画面に
+    // 表示されるUIDをコピーして使えます）。
+    function isAdmin() {
+      return isAllowedDomain() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      allow read: if isAllowedDomain();
+      allow write: if false; // Firebaseコンソールから手動でのみ変更
+    }
+
+    // 実績記録：誰でも記録・自己修正（直前の取り消し）ができる
+    match /events/{id} {
+      allow read, create, update, delete: if isAllowedDomain();
+    }
+
+    // 社内向けリアルタイム通知（room機能の代替）
+    match /roomEvents/{id} {
+      allow read, create: if isAllowedDomain();
+      allow update, delete: if false;
+    }
+
+    // 管理者だけが登録・編集できるマスタデータ
+    match /staff/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
+    match /targets/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
+    match /notices/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
+    match /ashiftAgencies/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
+    match /ashiftBlocks/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
+    match /admin/{id} { allow read, write: if isAdmin(); }
+
+    // その他の想定外のコレクションはデフォルトで拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+    function emailDomain() {
+      return request.auth.token.email.split('@')[1].lower();
+    }
+    function isAllowedDomain() {
+      return isSignedIn() && emailDomain() in ['5lance.co.jp'];
+    }
+
+    // お知らせの添付ファイル：閲覧は社内の誰でも、アップロードは管理者パスワードを
+    // 通過した人が使う想定（アプリ側でボタンを管理者のみに表示しています）。
+    // Firestore側の admins コレクションと同様に、書き込みは念のため管理者のみに
+    // 絞りたい場合は、Firestoreの admins ドキュメントを firestore.get() で
+    // 参照する必要がありますが、Storageルールは軽量な用途のため、ここでは
+    // 「ログイン済みの社内メンバーなら誰でもアップロード可」としています。
+    match /notices/{allPaths=**} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain()
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
