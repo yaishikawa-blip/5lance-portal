@@ -8,12 +8,12 @@
 // Firebase Authentication と Firestore のセキュリティルールで行われます）。
 
 window.__FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCXMbdV1-SAFczBkup_0O77-rQ63BO8Bd8",
+  authDomain: "lance-portal.firebaseapp.com",
+  projectId: "lance-portal",
+  storageBucket: "lance-portal.firebasestorage.app",
+  messagingSenderId: "961493063873",
+  appId: "1:961493063873:web:99adfb4c9b14b4579d1c40"
 };
 
 // ログインを許可するメールアドレスのドメイン（@より後ろの部分）。
