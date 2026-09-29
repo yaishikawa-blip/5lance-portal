@@ -41,6 +41,11 @@ service cloud.firestore {
     match /notices/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
     match /ashiftAgencies/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
     match /ashiftBlocks/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
+    // 管理者パスワードの保存場所（admin/auth）は、まだ誰も管理者登録されていない
+    // 最初の状態でも設定できるよう、社内ドメインなら誰でも読み書きできるようにします
+    // （もともとこのパスワードはUX目的の簡易ロックで、実際のデータ保護はこの下の
+    // 各コレクションのルールで行っています）。
+    match /admin/auth { allow read, write: if isAllowedDomain(); }
     match /admin/{id} { allow read, write: if isAdmin(); }
 
     // その他の想定外のコレクションはデフォルトで拒否
