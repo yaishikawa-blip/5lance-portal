@@ -279,12 +279,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="card"><h2>最新のお知らせ</h2><ul id="h-list"><li class="empty2">お知らせはまだありません。</li></ul>
 <button class="more" data-p="notice">すべて見る</button> <button class="more" data-p="notice" data-open="1" hidden>お知らせを書き込む</button></div>
 <div class="tiles">
+<button type="button" class="tile" id="t-report" style="--tc:var(--acc)"><span class="ic">✅</span><b>実績報告</b><span>タップして記録する</span></button>
 <button class="tile" data-p="jisseki" style="--tc:var(--acc)"><span class="ic">📊</span><b>実績管理</b><span>週間の目標と獲得実績</span></button>
 <button class="tile" data-p="shift" style="--tc:var(--et)"><span class="ic">🗓️</span><b>シフト管理</b><span>週ごとのシフトを確認</span></button>
 <button class="tile" data-p="notice" style="--tc:var(--lt)"><span class="ic">📢</span><b>情報共有</b><span>社内への連絡事項</span></button>
 <button class="tile" data-p="admin" id="t-admin" style="--tc:var(--bad)" hidden><span class="ic">🔒</span><b>管理者専用</b><span>パスワードが必要です</span></button>
 </div>
-<div class="card"><h2>実績を記録する</h2>
+<div class="card" id="report-card" hidden><h2>実績を記録する</h2>
 <label style="display:block;margin-bottom:12px">担当者
 <select id="e-name" style="display:block;width:100%;max-width:280px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
@@ -1077,6 +1078,14 @@ function show(p){
   window.scrollTo(0,0);
 }
 document.getElementById("app").onclick=function(e){var b=e.target.closest("[data-p]");if(b){show(b.dataset.p);if(b.dataset.open){var f=document.getElementById("n-form");f.hidden=false;document.getElementById("n-title").focus()}}};
+})();
+(function(){
+var t=document.getElementById("t-report"),c=document.getElementById("report-card");
+if(!t||!c)return;
+t.onclick=function(){
+  c.hidden=!c.hidden;
+  if(!c.hidden)c.scrollIntoView({behavior:"smooth",block:"start"});
+};
 })();
 (function(){
 function $(i){return document.getElementById(i)}
