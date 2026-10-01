@@ -870,9 +870,6 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"]];
     var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー"};
     var agencies=[],blocks=[],staffNames=[];
-    db.collection("staff").onSnapshot(function(snap){
-      staffNames=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});
-    },function(){});
     var winStart=new Date();winStart.setHours(0,0,0,0);
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
     function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -941,19 +938,27 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       var ov=$("stfm-ov"),sel=$("stfm-name");
       var cur=(bl.cells&&bl.cells[role]&&bl.cells[role][d])||"";
       var curName=plainName(cur);
-      var opts='<option value="">（空欄にする）</option>';
-      var found=false;
-      staffNames.forEach(function(s){
-        if(s.name===curName)found=true;
-        opts+='<option value="'+esc2(s.name)+'"'+(s.name===curName?" selected":"")+'>'+esc2(s.name)+'</option>';
-      });
-      if(curName&&!found)opts+='<option value="'+esc2(curName)+'" selected>'+esc2(curName)+'（名簿未登録）</option>';
-      sel.innerHTML=opts;
+      sel.innerHTML='<option value="">読み込み中…</option>';
       $("stfm-title").textContent=bl.name+" ／ "+ROLE_LABEL[role];
       $("stfm-sub").textContent=d+"の担当者を選んでください。「（空欄にする）」を選んで保存すると削除されます。";
       ov.hidden=false;
       ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date=d;
-      sel.focus();
+      db.collection("staff").get().then(function(snap){
+        if(ov.dataset.block!==bl.id||ov.dataset.role!==role||ov.dataset.date!==d)return;
+        var list=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});
+        staffNames=list;
+        var opts='<option value="">（空欄にする）</option>';
+        var found=false;
+        list.forEach(function(s){
+          if(s.name===curName)found=true;
+          opts+='<option value="'+esc2(s.name)+'"'+(s.name===curName?" selected":"")+'>'+esc2(s.name)+'</option>';
+        });
+        if(curName&&!found)opts+='<option value="'+esc2(curName)+'" selected>'+esc2(curName)+'（名簿未登録）</option>';
+        sel.innerHTML=opts;
+        sel.focus();
+      },function(){
+        sel.innerHTML='<option value="">（スタッフ一覧の読み込みに失敗しました）</option>';
+      });
     }
     $("as-adm-table").onclick=function(ev){
       var b=ev.target.closest("button[data-block]");if(!b)return;
