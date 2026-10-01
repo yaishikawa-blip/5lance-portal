@@ -35,18 +35,17 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // 管理者だけが登録・編集できるマスタデータ
-    match /staff/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
-    match /targets/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
-    match /notices/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
-    match /ashiftAgencies/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
-    match /ashiftBlocks/{id} { allow read: if isAllowedDomain(); allow write: if isAdmin(); }
-    // 管理者パスワードの保存場所（admin/auth）は、まだ誰も管理者登録されていない
-    // 最初の状態でも設定できるよう、社内ドメインなら誰でも読み書きできるようにします
-    // （もともとこのパスワードはUX目的の簡易ロックで、実際のデータ保護はこの下の
-    // 各コレクションのルールで行っています）。
-    match /admin/auth { allow read, write: if isAllowedDomain(); }
-    match /admin/{id} { allow read, write: if isAdmin(); }
+    // マスタデータ：アプリ内の管理者パスワードで保護される想定のため、
+    // Firestore側は社内ドメインの誰でも読み書きできるようにしています
+    // （実際のアクセス制限はアプリの管理者パスワード画面で行っています。
+    // これにより、ya.ishikawaさん以外の社員でもパスワードさえ知っていれば
+    // スタッフ・シフト・お知らせの登録ができます）。
+    match /staff/{id} { allow read, write: if isAllowedDomain(); }
+    match /targets/{id} { allow read, write: if isAllowedDomain(); }
+    match /notices/{id} { allow read, write: if isAllowedDomain(); }
+    match /ashiftAgencies/{id} { allow read, write: if isAllowedDomain(); }
+    match /ashiftBlocks/{id} { allow read, write: if isAllowedDomain(); }
+    match /admin/{id} { allow read, write: if isAllowedDomain(); }
 
     // その他の想定外のコレクションはデフォルトで拒否
     match /{document=**} {
