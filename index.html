@@ -407,7 +407,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 <div id="as-adm-empty" class="empty" hidden>店舗ブロックがまだ登録されていません。</div>
 <div class="tw"><table id="as-adm-table" class="asv"></table></div>
-<p class="note">マスをクリックすると、氏名・所属チームの略称を入力できます（例：(5L)清水）。空欄で保存すると削除されます。</p>
+<p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。「（空欄にする）」を選んで保存すると削除されます。</p>
 </div>
 <div class="card"><h2>管理者メモ</h2>
 <p>管理者だけが読み書きできます。他のメンバーには表示されません。</p>
@@ -865,6 +865,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function esc2(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
     function fail2(){alert("保存できませんでした。")}
     function N2(x){return Number(x)||0}
+    function plainName(v){var m=/^\(([^)]*)\)\s*(.*)$/.exec(v||"");return (m?m[2]:String(v||"")).trim()}
     var WD=["日","月","火","水","木","金","土"];
     var DAYS=14;
     var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"]];
