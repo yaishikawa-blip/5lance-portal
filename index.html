@@ -212,6 +212,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 @keyframes toastout{to{opacity:0;transform:translateY(-10px)}}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}}
 
+#stfm-ov{position:fixed;inset:0;background:rgba(3,32,95,.45);display:flex;align-items:center;justify-content:center;z-index:9998;padding:16px}
+#stfm-ov[hidden]{display:none}
+#stfm-box{background:var(--panel);border-radius:10px;padding:18px;max-width:340px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#stfm-box h3{margin:0 0 4px;font-size:15px;color:var(--ink)}
+#stfm-box p.note{margin:0 0 12px;color:var(--sub);font-size:12px}
+#stfm-box select,#stfm-box input{display:block;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);margin:4px 0 12px;font:inherit}
+#stfm-box .row{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+#stfm-box .row button{border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;border:0;font-size:13px}
+#stfm-cancel{background:var(--o);color:var(--ink)}
+#stfm-clear{background:var(--bad);color:#fff}
+#stfm-save{background:var(--acc);color:#fff}
+
 .top{background:var(--bar);color:#fff;position:relative;overflow:hidden}
 .top::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(112deg,transparent 60%,rgba(255,255,255,.10) 60% 61.2%,transparent 61.2% 66%,rgba(255,255,255,.10) 66% 67.2%,transparent 67.2% 72%,rgba(255,255,255,.10) 72% 73.2%,transparent 73.2% 88%,#003f98 88%)}
 .top .in{max-width:1000px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;position:relative;z-index:1}
@@ -443,6 +455,23 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="n-list"></div>
 </section>
 </div></div>
+<div id="stfm-ov" hidden>
+<div id="stfm-box" role="dialog" aria-modal="true" aria-labelledby="stfm-title">
+<h3 id="stfm-title"></h3>
+<p class="note" id="stfm-sub"></p>
+<label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px">スタッフ
+<select id="stfm-name"></select>
+</label>
+<label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px">所属チームの略称（任意・例：5L）
+<input id="stfm-team" maxlength="10" placeholder="例：5L">
+</label>
+<div class="row">
+<button type="button" id="stfm-clear">クリア</button>
+<button type="button" id="stfm-cancel">キャンセル</button>
+<button type="button" id="stfm-save">保存</button>
+</div>
+</div>
+</div>
 <script>
 (function(){
 function playBeep(){
@@ -696,7 +725,7 @@ function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 var WD=["日","月","火","水","木","金","土"];
 var DAYS=14;
-var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"]];
+var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"]];
 var agencies=[],blocks=[];
 var winStart=new Date();winStart.setHours(0,0,0,0);
 function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -841,9 +870,12 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function N2(x){return Number(x)||0}
     var WD=["日","月","火","水","木","金","土"];
     var DAYS=14;
-    var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"]];
-    var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー"};
-    var agencies=[],blocks=[];
+    var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"]];
+    var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー"};
+    var agencies=[],blocks=[],staffNames=[];
+    db.collection("staff").onSnapshot(function(snap){
+      staffNames=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});
+    },function(){});
     var winStart=new Date();winStart.setHours(0,0,0,0);
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
     function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -908,16 +940,47 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     $("as-adm-prev").onclick=function(){winStart=addD(winStart,-7);renderTable()};
     $("as-adm-next").onclick=function(){winStart=addD(winStart,7);renderTable()};
     $("as-adm-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);renderTable()};
+    function teamOf(v){var m=/^\(([^)]*)\)/.exec(v||"");return m?m[1]:""}
+    function openStaffModal(bl,role,d){
+      var ov=$("stfm-ov"),sel=$("stfm-name"),team=$("stfm-team");
+      var cur=(bl.cells&&bl.cells[role]&&bl.cells[role][d])||"";
+      var curName=plainName(cur),curTeam=teamOf(cur);
+      var opts='<option value="">（選択してください）</option>';
+      var found=false;
+      staffNames.forEach(function(s){
+        if(s.name===curName)found=true;
+        opts+='<option value="'+esc2(s.name)+'"'+(s.name===curName?" selected":"")+'>'+esc2(s.name)+'</option>';
+      });
+      if(curName&&!found)opts+='<option value="'+esc2(curName)+'" selected>'+esc2(curName)+'（名簿未登録）</option>';
+      sel.innerHTML=opts;
+      team.value=curTeam;
+      $("stfm-title").textContent=bl.name+" ／ "+ROLE_LABEL[role];
+      $("stfm-sub").textContent=d+"の担当者を選んでください。クリアすると削除されます。";
+      ov.hidden=false;
+      ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date=d;
+      sel.focus();
+    }
     $("as-adm-table").onclick=function(ev){
       var b=ev.target.closest("button[data-block]");if(!b)return;
       var bl=blocks.filter(function(x){return x.id===b.dataset.block})[0];if(!bl)return;
-      var role=b.dataset.role,d=b.dataset.date;
-      var cur=(bl.cells&&bl.cells[role]&&bl.cells[role][d])||"";
-      var v=prompt(bl.name+" ／ "+ROLE_LABEL[role]+" ／ "+d+"\n氏名・所属チームの略称を入力してください（例：(5L)清水）。空欄にすると削除されます。",cur);
-      if(v===null)return;
-      v=v.trim();
+      openStaffModal(bl,b.dataset.role,b.dataset.date);
+    };
+    function closeStaffModal(){$("stfm-ov").hidden=true}
+    function saveStaffModal(v){
+      var ov=$("stfm-ov"),blId=ov.dataset.block,role=ov.dataset.role,d=ov.dataset.date;
+      if(!blId)return;
       var patch={cells:{}};patch.cells[role]={};patch.cells[role][d]=v||null;
-      db.doc("ashiftBlocks/"+bl.id).update(patch).catch(fail2);
+      db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
+      closeStaffModal();
+    }
+    $("stfm-cancel").onclick=closeStaffModal;
+    $("stfm-clear").onclick=function(){saveStaffModal("")};
+    $("stfm-ov").onclick=function(ev){if(ev.target.id==="stfm-ov")closeStaffModal()};
+    $("stfm-save").onclick=function(){
+      var name=$("stfm-name").value.trim(),team=$("stfm-team").value.trim();
+      if(!name){closeStaffModal();return}
+      var v=team?"("+team+")"+name:name;
+      saveStaffModal(v);
     };
     $("as-ag-f").onsubmit=function(ev){
       ev.preventDefault();
@@ -1034,7 +1097,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         .then(function(){$("a-csv-msg").textContent="書き出しました。"},function(){$("a-csv-msg").textContent="書き出せませんでした。"});
     };
     $("a-csv-shift").onclick=function(){
-      var ROLE_LABEL3={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー"};
+      var ROLE_LABEL3={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー"};
       var rows=[];
       asBlockDocs.forEach(function(b){
         var cells=b.cells||{};
