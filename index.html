@@ -426,8 +426,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 <div class="card"><h2>スタッフ一覧（実績報告用）</h2>
 <div id="stf-list"></div>
-<form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><input id="stf-company" maxlength="20" placeholder="所属会社名（委託の場合のみ）" aria-label="所属会社名"><button class="btn" type="submit">追加</button></form>
-<p class="note" style="margin-top:4px">委託スタッフは所属会社名も入力してください。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます（実績管理ではフルネームのまま表示されます）。</p>
+<form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><input id="stf-company" maxlength="20" placeholder="所属会社名（委託の場合のみ）" aria-label="所属会社名"><label style="font-size:13px;color:var(--sub);white-space:nowrap"><input type="checkbox" id="stf-individual"> 個人事業主</label><button class="btn" type="submit">追加</button></form>
+<p class="note" style="margin-top:4px">委託スタッフは所属会社名も入力してください。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます。個人事業主の場合は「個人事業主」にチェックすると「（個）苗字」と表示されます（実績管理ではどちらもフルネームのまま表示されます）。</p>
 <p class="note">ここで登録した名前が実績報告・月間目標設定で使用されます。</p>
 </div>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
@@ -923,7 +923,7 @@ claude.use("db").then(function(d){
   if(!d)return;
   d.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
   d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
-  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.company)staffCompanyMap[v.name]=v.company});render()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});render()},function(){});
 }).catch(function(){});
 })();
 
@@ -984,10 +984,16 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
   (function(){
     function esc2(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
     var st2=[];
+    function stfTagHtml(s){
+      if(s.individual)return ' <span style="display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin-left:4px">個人事業主</span>';
+      if(s.company)return ' <span style="display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin-left:4px">'+esc2(s.company)+'</span>';
+      return "";
+    }
     function render2(){
       $("stf-list").innerHTML=st2.length?st2.map(function(s){
-        return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(s.name)+(s.company?' <span style="display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin-left:4px">'+esc2(s.company)+'</span>':"")+'</span>'
+        return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(s.name)+stfTagHtml(s)+'</span>'
          +'<input type="text" data-company="'+s.id+'" value="'+esc2(s.company||"")+'" placeholder="所属会社（委託の場合）" style="width:140px;margin-left:4px">'
+         +'<label style="font-size:12px;color:var(--sub);margin-left:4px;white-space:nowrap"><input type="checkbox" data-individual="'+s.id+'"'+(s.individual?" checked":"")+'> 個人事業主</label>'
          +'<button type="button" class="del" data-savecompany="'+s.id+'">保存</button>'
          +'<button type="button" class="del" data-stfdel="'+s.id+'">削除</button></div>';
       }).join(""):'<p class="note">スタッフが登録されていません。</p>';
@@ -1004,17 +1010,19 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       if(sv){
         var row=sv.closest(".row2");if(!row)return;
         var co=row.querySelector('[data-company="'+sv.dataset.savecompany+'"]').value.trim();
-        db.doc("staff/"+sv.dataset.savecompany).update({company:co}).catch(function(){alert("保存できませんでした。")});
+        var ind=row.querySelector('[data-individual="'+sv.dataset.savecompany+'"]').checked;
+        db.doc("staff/"+sv.dataset.savecompany).update({company:co,individual:ind}).catch(function(){alert("保存できませんでした。")});
       }
     };
     $("stf-f").onsubmit=function(ev){
       ev.preventDefault();
       var n=$("stf-nm").value.trim();if(!n)return;
       var co=$("stf-company").value.trim();
-      db.collection("staff").add({name:n,company:co,order:Date.now()}).catch(function(){alert("追加できませんでした。")});
+      var ind=$("stf-individual").checked;
+      db.collection("staff").add({name:n,company:co,individual:ind,order:Date.now()}).catch(function(){alert("追加できませんでした。")});
       this.reset();
     };
-    db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,company:v.company||"",order:v.order||0}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
+    db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,company:v.company||"",individual:!!v.individual,order:v.order||0}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
     render2();
   })();
 
@@ -1269,7 +1277,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     };
     db.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
     db.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
-    db.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.company)staffCompanyMap[v.name]=v.company});renderTable()},function(){});
+    db.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderTable()},function(){});
     renderLists();renderTable();
   })();
 
