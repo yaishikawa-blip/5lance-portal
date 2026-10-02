@@ -240,6 +240,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #notice textarea{min-height:100px;resize:vertical}
 #notice .btn{background:var(--acc);border:0;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer}
 #notice .item h3{font-size:16px;margin:0 0 2px}
+#notice .item h3 .n-ic{margin-right:6px}
 #notice .item p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #notice .del{background:none;border:0;color:var(--sub);cursor:pointer;float:right;font:inherit}
 #notice .del:hover{color:var(--bad)}
@@ -1744,11 +1745,13 @@ function attHTML(v){
   if((v.attType||"").indexOf("video/")===0)return '<div class="att"><video src="'+esc(v.attUrl)+'" controls></video></div>';
   return '<div class="att"><a href="'+esc(v.attUrl)+'" target="_blank" rel="noopener">'+esc(v.attName||"添付ファイル")+'を開く</a></div>';
 }
+var CAT_ICON={"業界情報":"📰","打合せ内容":"🤝","営業関連":"💼","MTG議事録":"📋","お知らせ":"📢"};
+function catIcon(c){return CAT_ICON[c]||"📢"}
 function renderList(){
   var items=curCat?allItems.filter(function(v){return v.category===curCat}):allItems;
   $("n-list").innerHTML=items.length?items.map(function(v){
     return '<div class="card item">'+(window.__noticeAdmin?'<button class="del" data-id="'+esc(v.id)+'" aria-label="削除">削除</button>':"")
-     +(v.category?'<span class="cat">'+esc(v.category)+'</span>':"")+'<h3>'+esc(v.title||"")+'</h3><small>'+fmt(v.posted||0)+'</small><p>'+esc(v.body||"")+'</p>'+attHTML(v)+'</div>'}).join(""):'<div class="empty2">お知らせはまだありません。</div>';
+     +(v.category?'<span class="cat">'+esc(v.category)+'</span>':"")+'<h3><span class="n-ic" aria-hidden="true">'+catIcon(v.category)+'</span>'+esc(v.title||"")+'</h3><small>'+fmt(v.posted||0)+'</small><p>'+esc(v.body||"")+'</p>'+attHTML(v)+'</div>'}).join(""):'<div class="empty2">お知らせはまだありません。</div>';
 }
 $("n-cats").onclick=function(ev){
   var b=ev.target.closest("[data-cat]");if(!b)return;
