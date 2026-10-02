@@ -498,6 +498,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px">スタッフ
 <select id="stfm-name"></select>
 </label>
+<label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px"><input type="checkbox" id="stfm-flag"> 色をつけて目立たせる（変更時の目印）</label>
 <div class="row">
 <button type="button" id="stfm-clear">クリア</button>
 <button type="button" id="stfm-cancel">キャンセル</button>
@@ -792,8 +793,7 @@ function weekDateList(vb){
   return a;
 }
 function inRange(b,ds){return ds>=b.start&&ds<=b.end}
-var CHANGE_WINDOW_MS=24*60*60*1000;
-function isChanged(b,kind,dstr){var t=b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr];return !!(t&&(Date.now()-t)<CHANGE_WINDOW_MS)}
+function isChanged(b,kind,dstr){return !!(b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr])}
 function siteRowCells(b,ds,kind){
   var out="",i=0;
   while(i<ds.length){
@@ -968,8 +968,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return a;
     }
     function inRange(b,ds){return ds>=b.start&&ds<=b.end}
-    var CHANGE_WINDOW_MS=24*60*60*1000;
-    function isChanged(b,kind,dstr){var t=b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr];return !!(t&&(Date.now()-t)<CHANGE_WINDOW_MS)}
+    function isChanged(b,kind,dstr){return !!(b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr])}
     function siteRowCells(b,ds,kind){
       var out="",i=0;
       while(i<ds.length){
@@ -1059,6 +1058,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       sel.innerHTML='<option value="">読み込み中…</option>';
       $("stfm-title").textContent=bl.name+" ／ "+ROLE_LABEL[role];
       $("stfm-sub").textContent=d+"の担当者を選んでください。「（空欄にする）」を選んで保存すると削除されます。";
+      $("stfm-flag").checked=!!(bl.cellMeta&&bl.cellMeta[role]&&bl.cellMeta[role][d]);
       ov.hidden=false;
       ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date=d;ov.dataset.bulk="";
       db.collection("staff").get().then(function(snap){
@@ -1083,6 +1083,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       sel.innerHTML='<option value="">読み込み中…</option>';
       $("stfm-title").textContent=bl.name+" ／ "+ROLE_LABEL[role]+"（期間一括）";
       $("stfm-sub").textContent=bl.start+"〜"+bl.end+"の全日に同じ担当者をまとめて設定します。「（空欄にする）」を選んで保存すると全日削除されます。";
+      $("stfm-flag").checked=false;
       ov.hidden=false;
       ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date="";ov.dataset.bulk="1";
       db.collection("staff").get().then(function(snap){
@@ -1112,18 +1113,18 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function saveStaffModal(v){
       var ov=$("stfm-ov"),blId=ov.dataset.block,role=ov.dataset.role,d=ov.dataset.date,bulk=ov.dataset.bulk==="1";
       if(!blId)return;
-      var now=Date.now();
+      var flag=!!$("stfm-flag").checked;
       if(bulk){
         var bl=blocks.filter(function(x){return x.id===blId})[0];
         if(!bl){closeStaffModal();return}
         var cellsPatch={},metaPatch={},cur=parseD(bl.start),end=parseD(bl.end);
-        while(cur<=end){var k=fmtD(cur);cellsPatch[k]=v||null;metaPatch[k]=now;cur=addD(cur,1)}
+        while(cur<=end){var k=fmtD(cur);cellsPatch[k]=v||null;metaPatch[k]=flag;cur=addD(cur,1)}
         var patch={cells:{},cellMeta:{}};patch.cells[role]=cellsPatch;patch.cellMeta[role]=metaPatch;
         db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
         closeStaffModal();
         return;
       }
-      var patch={cells:{},cellMeta:{}};patch.cells[role]={};patch.cells[role][d]=v||null;patch.cellMeta[role]={};patch.cellMeta[role][d]=now;
+      var patch={cells:{},cellMeta:{}};patch.cells[role]={};patch.cells[role][d]=v||null;patch.cellMeta[role]={};patch.cellMeta[role][d]=flag;
       db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
       closeStaffModal();
     }
