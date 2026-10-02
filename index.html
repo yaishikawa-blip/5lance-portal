@@ -49,6 +49,19 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki td.sub{color:var(--sub);font-size:12px;font-weight:400}
 #jisseki th.sub{color:var(--sub);font-size:11px;font-weight:400}
 #jisseki .nametag{display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin:2px 3px 2px 0;white-space:nowrap}
+#jisseki .jcards{display:none}
+#jisseki .jcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+#jisseki .jcard-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:16px}
+#jisseki .jcard-tags{margin-bottom:10px;line-height:1.8}
+#jisseki .jcard-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px;color:var(--sub)}
+#jisseki .jcard-row:first-of-type{border-top:0}
+#jisseki .jcard .prog{align-items:flex-end}
+#jisseki .jcard-sub{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;gap:6px}
+#jisseki .jcard-sub span{background:var(--bg);border-radius:5px;padding:3px 8px}
+@media (max-width:680px){
+  #jisseki .tw{display:none}
+  #jisseki .jcards{display:block}
+}
 #jisseki .bar{width:150px;height:10px;background:var(--track);border-radius:5px;overflow:hidden;display:inline-block;vertical-align:middle}
 #jisseki .bar i{display:block;height:100%;background:var(--acc)}
 #jisseki .bar i.mid{background:var(--warn)}.bar i.low{background:var(--bad)}
@@ -340,6 +353,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tw"><table>
 <thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規</th><th>総合達成率</th></tr></thead>
 <tbody id="st-rows"></tbody><tfoot id="st-foot"></tfoot></table></div>
+<div id="st-cards" class="jcards"></div>
 <div id="st-empty" class="empty" hidden>現場（代理店シフト）がまだ登録されていません。管理者専用ページの「代理店シフト管理」から登録してください。</div>
 <p class="note">達成率は、その現場のシフトに入っている稼働者（氏名）の、シフト期間内の記録を合計し、目標で割った値です。現場・期間・稼働者・目標はすべて管理者専用ページの「代理店シフト管理」で設定します。</p>
 </section>
@@ -350,6 +364,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tw"><table>
 <thead><tr id="j-thead"></tr></thead>
 <tbody id="j-agg"></tbody><tfoot id="j-aggfoot"></tfoot></table></div>
+<div id="j-cards" class="jcards"></div>
 <div id="j-empty" class="empty" hidden>この月の目標・報告はまだありません。下から報告してください。</div>
 <p class="note">達成率は、この月に報告された記録を合計し、月間目標で割った値です。月間目標は管理者が設定します。</p>
 </section>
@@ -627,6 +642,15 @@ function render(){
      +'<td><span class="rate '+c+'">'+p+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(p,100)+'%"></i></span></td></tr>'}).join("");
   $("j-aggfoot").innerHTML=list.length?'<tr><td>合計</td><td>'+yen(sum.m)+' / '+yen(sum.mt)+'</td><td>'+yen(sum.n)+' / '+yen(sum.nt)+'</td>'
    +PLAIN.map(function(pt){return '<td class="sub">'+yen(psum[pt.k])+'</td>'}).join("")+'<td><b>'+rate+'%</b></td></tr>':"";
+  $("j-cards").innerHTML=list.map(function(n){
+    var t=tgt[n]||{},a=agg[n]||{};
+    var g=N(a.mnp)+N(a.new),gt=N(t.mnpTarget)+N(t.newTarget),p=pct(g,gt),c=cls(p);
+    var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("");
+    return '<div class="jcard"><div class="jcard-head"><b>'+esc(n)+'</b><span class="rate '+c+'">'+p+'%</span></div>'
+     +'<div class="jcard-row"><span>MNP</span>'+prog(a.mnp,t.mnpTarget)+'</div>'
+     +'<div class="jcard-row"><span>新規</span>'+prog(a.new,t.newTarget)+'</div>'
+     +'<div class="jcard-sub">'+subHtml+'</div></div>';
+  }).join("");
   $("j-empty").hidden=list.length>0;
 
   var seen={},o="";names.concat(events.map(function(e){return e.name})).concat(targets.map(function(t){return t.name})).forEach(function(x){if(x&&!seen[x]){seen[x]=1;o+='<option value="'+esc(x)+'">'}});
@@ -751,6 +775,22 @@ function rowFor(b){
    +'<td>'+prog(mnp,mt)+'</td><td>'+prog(neu,nt)+'</td>'
    +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
 }
+function cardFor(b){
+  var staffArr=blockStaff(b);
+  var mnp=0,neu=0;
+  events.forEach(function(ev){
+    if(staffArr.indexOf(ev.name)<0)return;
+    var d=new Date(ev.ts),ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(ds<b.start||ds>b.end)return;
+    if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
+  });
+  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
+  var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
+  return '<div class="jcard"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
+   +'<div class="jcard-tags">'+staffHtml+'</div>'
+   +'<div class="jcard-row"><span>MNP</span>'+prog(mnp,mt)+'</div>'
+   +'<div class="jcard-row"><span>新規</span>'+prog(neu,nt)+'</div></div>';
+}
 function render(){
   var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
   var curSel=$("st-period").value;
@@ -761,8 +801,9 @@ function render(){
   if(wk){
     $("st-period").disabled=true;
     var list=blocks.filter(function(b){return (b.week||"")===wk}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
-    if(!list.length){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-empty").hidden=false;return}
+    if(!list.length){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-cards").innerHTML="";$("st-empty").hidden=false;return}
     $("st-rows").innerHTML=list.map(rowFor).join("");
+    $("st-cards").innerHTML=list.map(cardFor).join("");
     $("st-foot").innerHTML="";
     $("st-empty").hidden=true;
     return;
@@ -770,8 +811,9 @@ function render(){
   $("st-period").disabled=false;
 
   var b=selectedBlock();
-  if(!b){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-empty").hidden=false;return}
+  if(!b){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-cards").innerHTML="";$("st-empty").hidden=false;return}
   $("st-rows").innerHTML=rowFor(b);
+  $("st-cards").innerHTML=cardFor(b);
   $("st-foot").innerHTML="";
   $("st-empty").hidden=true;
 }
