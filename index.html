@@ -414,6 +414,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
   <div class="tw"><table id="as-table" class="asv"></table></div>
   <p class="note">シフトの登録・変更は管理者専用ページで行います。</p>
+  <div class="card" style="margin-top:20px"><h2>スタッフ別 稼働日数（月間）</h2>
+  <div class="nav">
+    <button class="nb" id="as-mon-prev">前の月</button><span id="as-mon-range"></span><button class="nb" id="as-mon-next">次の月</button><button class="nb" id="as-mon-today">今月</button>
+  </div>
+  <div class="tw"><table><thead><tr><th>スタッフ</th><th>稼働日数</th></tr></thead><tbody id="as-mon-rows"></tbody></table></div>
+  <div id="as-mon-empty" class="empty" hidden>この月の稼働記録はまだありません。</div>
+  <p class="note">現場のシフト表に入力されている日数を、同じ人が1日に複数の現場・役割に入っていても1日分として数えています。</p>
+  </div>
 </section>
 <section id="admin" role="tabpanel" hidden>
 <button class="back" data-p="home">トップへ戻る</button>
@@ -965,11 +973,43 @@ function render(){
   }
   $("as-table").innerHTML=buildTable(ds,vb);
   $("as-empty").hidden=vb.length>0;
+  renderMonthly();
+}
+var monCursor=new Date();monCursor.setDate(1);
+function monthDateSet(d){
+  var y=d.getFullYear(),m=d.getMonth(),days=new Date(y,m+1,0).getDate(),set={};
+  for(var i=1;i<=days;i++)set[fmtD(new Date(y,m,i))]=true;
+  return set;
+}
+function renderMonthly(){
+  $("as-mon-range").textContent=monCursor.getFullYear()+"年"+(monCursor.getMonth()+1)+"月";
+  var dset=monthDateSet(monCursor),counts={};
+  blocks.forEach(function(b){
+    ROLES.forEach(function(r){
+      var cells=b.cells&&b.cells[r[0]];
+      if(!cells)return;
+      Object.keys(cells).forEach(function(dk){
+        if(!dset[dk])return;
+        var v=cells[dk];if(!v)return;
+        var nm=plainName(v);if(!nm)return;
+        counts[nm]=counts[nm]||{};
+        counts[nm][dk]=true;
+      });
+    });
+  });
+  var names=Object.keys(counts).sort(function(a,b){return Object.keys(counts[b]).length-Object.keys(counts[a]).length});
+  $("as-mon-rows").innerHTML=names.map(function(n){
+    return '<tr><td>'+esc(formatShiftName(n))+'</td><td>'+Object.keys(counts[n]).length+'日</td></tr>';
+  }).join("");
+  $("as-mon-empty").hidden=names.length>0;
 }
 $("as-prev").onclick=function(){winStart=addD(winStart,-7);render()};
 $("as-next").onclick=function(){winStart=addD(winStart,7);render()};
 $("as-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);render()};
 $("as-week").onchange=render;
+$("as-mon-prev").onclick=function(){monCursor.setMonth(monCursor.getMonth()-1);renderMonthly()};
+$("as-mon-next").onclick=function(){monCursor.setMonth(monCursor.getMonth()+1);renderMonthly()};
+$("as-mon-today").onclick=function(){monCursor=new Date();monCursor.setDate(1);renderMonthly()};
 render();
 claude.use("db").then(function(d){
   if(!d)return;
