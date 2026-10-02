@@ -441,7 +441,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 <div id="as-adm-empty" class="empty" hidden>店舗ブロックがまだ登録されていません。</div>
 <div class="tw"><table id="as-adm-table" class="asv"></table></div>
-<p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。「（空欄にする）」を選んで保存すると削除されます。</p>
+<p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。各行の「一括」ボタンを押すと、その役割の期間全体（開始日〜終了日）に同じ担当者をまとめて設定できます。「（空欄にする）」を選んで保存すると削除されます。</p>
 </div>
 <div class="card"><h2>管理者メモ</h2>
 <p>管理者だけが読み書きできます。他のメンバーには表示されません。</p>
@@ -988,7 +988,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
           body+="<tr>";
           if(first){body+='<td class="ag" rowspan="'+rowCount+'">'+esc2(ag.name)+"</td>";first=false}
           body+=siteRowCells(b,ds,"header")+"</tr>";
-          ROLES.forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+"</td>"+siteRowCells(b,ds,r[0])+"</tr>"});
+          ROLES.forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+' <button type="button" class="del" data-bulkblock="'+b.id+'" data-bulkrole="'+r[0]+'" style="padding:2px 8px;font-size:11px">一括</button></td>'+siteRowCells(b,ds,r[0])+"</tr>"});
         });
       });
       return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
@@ -1036,9 +1036,9 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("stfm-title").textContent=bl.name+" ／ "+ROLE_LABEL[role];
       $("stfm-sub").textContent=d+"の担当者を選んでください。「（空欄にする）」を選んで保存すると削除されます。";
       ov.hidden=false;
-      ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date=d;
+      ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date=d;ov.dataset.bulk="";
       db.collection("staff").get().then(function(snap){
-        if(ov.dataset.block!==bl.id||ov.dataset.role!==role||ov.dataset.date!==d)return;
+        if(ov.dataset.block!==bl.id||ov.dataset.role!==role||ov.dataset.date!==d||ov.dataset.bulk==="1")return;
         var list=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});
         staffNames=list;
         var opts='<option value="">（空欄にする）</option>';
@@ -1054,15 +1054,50 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         sel.innerHTML='<option value="">（スタッフ一覧の読み込みに失敗しました）</option>';
       });
     }
+    function openBulkStaffModal(bl,role){
+      var ov=$("stfm-ov"),sel=$("stfm-name");
+      sel.innerHTML='<option value="">読み込み中…</option>';
+      $("stfm-title").textContent=bl.name+" ／ "+ROLE_LABEL[role]+"（期間一括）";
+      $("stfm-sub").textContent=bl.start+"〜"+bl.end+"の全日に同じ担当者をまとめて設定します。「（空欄にする）」を選んで保存すると全日削除されます。";
+      ov.hidden=false;
+      ov.dataset.block=bl.id;ov.dataset.role=role;ov.dataset.date="";ov.dataset.bulk="1";
+      db.collection("staff").get().then(function(snap){
+        if(ov.dataset.block!==bl.id||ov.dataset.role!==role||ov.dataset.bulk!=="1")return;
+        var list=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});
+        staffNames=list;
+        var opts='<option value="">（空欄にする）</option>';
+        list.forEach(function(s){opts+='<option value="'+esc2(s.name)+'">'+esc2(s.name)+'</option>'});
+        sel.innerHTML=opts;
+        sel.focus();
+      },function(){
+        sel.innerHTML='<option value="">（スタッフ一覧の読み込みに失敗しました）</option>';
+      });
+    }
     $("as-adm-table").onclick=function(ev){
+      var bk=ev.target.closest("button[data-bulkblock]");
+      if(bk){
+        var bl2=blocks.filter(function(x){return x.id===bk.dataset.bulkblock})[0];if(!bl2)return;
+        openBulkStaffModal(bl2,bk.dataset.bulkrole);
+        return;
+      }
       var b=ev.target.closest("button[data-block]");if(!b)return;
       var bl=blocks.filter(function(x){return x.id===b.dataset.block})[0];if(!bl)return;
       openStaffModal(bl,b.dataset.role,b.dataset.date);
     };
     function closeStaffModal(){$("stfm-ov").hidden=true}
     function saveStaffModal(v){
-      var ov=$("stfm-ov"),blId=ov.dataset.block,role=ov.dataset.role,d=ov.dataset.date;
+      var ov=$("stfm-ov"),blId=ov.dataset.block,role=ov.dataset.role,d=ov.dataset.date,bulk=ov.dataset.bulk==="1";
       if(!blId)return;
+      if(bulk){
+        var bl=blocks.filter(function(x){return x.id===blId})[0];
+        if(!bl){closeStaffModal();return}
+        var cellsPatch={},cur=parseD(bl.start),end=parseD(bl.end);
+        while(cur<=end){cellsPatch[fmtD(cur)]=v||null;cur=addD(cur,1)}
+        var patch={cells:{}};patch.cells[role]=cellsPatch;
+        db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
+        closeStaffModal();
+        return;
+      }
       var patch={cells:{}};patch.cells[role]={};patch.cells[role][d]=v||null;
       db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
       closeStaffModal();
