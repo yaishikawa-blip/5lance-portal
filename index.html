@@ -366,7 +366,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
 <div class="tw"><table>
-<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規</th><th>総合達成率</th></tr></thead>
+<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規（通常）</th><th>総合達成率</th></tr></thead>
 <tbody id="st-rows"></tbody><tfoot id="st-foot"></tfoot></table></div>
 <div id="st-cards" class="jcards"></div>
 <div id="st-empty" class="empty" hidden>現場（代理店シフト）がまだ登録されていません。管理者専用ページの「代理店シフト管理」から登録してください。</div>
@@ -435,12 +435,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="nav">
 <button class="nb" id="jt-prev">前の月</button><span id="jt-range"></span><button class="nb" id="jt-next">次の月</button><button class="nb" id="jt-today">今月</button>
 </div>
-<div class="tw"><table><thead><tr><th>担当者</th><th>MNP目標</th><th>新規目標</th><th></th></tr></thead><tbody id="j-trows"></tbody></table></div>
-<form id="j-tf"><input id="jt-name" required maxlength="20" list="j-names" placeholder="担当者名を入力"><input id="jt-m" type="number" min="0" step="1" required placeholder="MNP月間目標"><input id="jt-n" type="number" min="0" step="1" required placeholder="新規月間目標"><button class="btn" type="submit">目標を保存</button></form>
+<div class="tw"><table><thead><tr><th>担当者</th><th>MNP目標</th><th>新規（通常）目標</th><th></th></tr></thead><tbody id="j-trows"></tbody></table></div>
+<form id="j-tf"><input id="jt-name" required maxlength="20" list="j-names" placeholder="担当者名を入力"><input id="jt-m" type="number" min="0" step="1" required placeholder="MNP月間目標"><input id="jt-n" type="number" min="0" step="1" required placeholder="新規（通常）月間目標"><button class="btn" type="submit">目標を保存</button></form>
 <p class="note">表示中の月に対する目標です。同じ担当者・同じ月で保存すると上書きされます。ここで設定した目標を、実績管理ページで各担当者が確認します。</p>
 </div>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
-<p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP・新規の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
+<p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP・新規（通常）の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">代理店</h3>
 <div id="as-ag-list" style="margin-bottom:10px"></div>
 <form id="as-ag-f" style="display:flex;gap:8px;margin-bottom:20px"><input id="as-ag-nm" required maxlength="20" placeholder="代理店名を入力"><button class="btn" type="submit">代理店を追加</button></form>
@@ -460,7 +460,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <option value="5">5週目</option>
 </select></label>
 <label style="font-size:13px;color:var(--sub)">MNP目標<input id="as-bl-mnp" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
-<label style="font-size:13px;color:var(--sub)">新規目標<input id="as-bl-new" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
+<label style="font-size:13px;color:var(--sub)">新規（通常）目標<input id="as-bl-new" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
 <button class="btn" type="submit">ブロックを追加</button>
 </form>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">割り当ての編集</h3>
@@ -601,7 +601,7 @@ function prog(a,t){
 }
 var TYPES=[
   {k:"mnp",l:"MNP",target:true},
-  {k:"new",l:"新規",target:true},
+  {k:"new",l:"新規（通常）",target:true},
   {k:"cellup",l:"セルアップ"},
   {k:"creca",l:"クレカ"},
   {k:"gcreca",l:"Gクレカ"},
@@ -620,7 +620,7 @@ var cursor=new Date();cursor.setDate(1);
 
 function selectedName(){return $("e-name").value}
 
-$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th>総合達成率</th>';
+$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規（通常）</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th>総合達成率</th>';
 $("e-taps").innerHTML=TYPES.map(function(t,i){
   return '<div class="tapcard"><button class="tapbtn'+(t.target?" target":"")+'" data-type="'+t.k+'">'+esc(t.l)+'<span class="tapcount" data-pending="'+t.k+'">0</span></button>'
    +'<div class="taprow2"><button class="tapundo" data-minus="'+t.k+'">−1</button><span class="tapmonth" data-month="'+t.k+'">今月 0件</span></div></div>';
@@ -668,7 +668,7 @@ function render(){
     var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("");
     return '<div class="jcard"><div class="jcard-head"><b>'+esc(n)+'</b><span class="rate '+c+'">'+p+'%</span></div>'
      +'<div class="jcard-row"><span>MNP</span>'+prog(a.mnp,t.mnpTarget)+'</div>'
-     +'<div class="jcard-row"><span>新規</span>'+prog(a.new,t.newTarget)+'</div>'
+     +'<div class="jcard-row"><span>新規（通常）</span>'+prog(a.new,t.newTarget)+'</div>'
      +'<div class="jcard-sub">'+subHtml+'</div></div>';
   }).join("");
   $("j-empty").hidden=list.length>0;
@@ -842,7 +842,7 @@ function cardFor(b){
   return '<div class="jcard"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
    +'<div class="jcard-tags">'+staffHtml+'</div>'
    +'<div class="jcard-row"><span>MNP</span>'+prog(mnp,mt)+'</div>'
-   +'<div class="jcard-row"><span>新規</span>'+prog(neu,nt)+'</div></div>';
+   +'<div class="jcard-row"><span>新規（通常）</span>'+prog(neu,nt)+'</div></div>';
 }
 function render(){
   var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
@@ -1210,7 +1210,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
          +'<label style="font-size:12px;color:var(--sub)">週目<select data-week="'+b.id+'" style="margin-left:4px">'+weekSelectHTML(b.week)+'</select></label>'
          +'<span style="font-size:12px;color:var(--sub)">稼働者 '+es+'名'+(es<ROLES.length?' <button type="button" class="del" data-addslot="'+b.id+'">＋追加</button>':'')+(es>1?' <button type="button" class="del" data-removeslot="'+b.id+'">－減らす</button>':'')+'</span>'
          +'<label style="font-size:12px;color:var(--sub)">MNP目標<input type="number" min="0" step="1" data-mnp="'+b.id+'" value="'+N2(b.mnpTarget)+'" style="width:70px;margin-left:4px"></label>'
-         +'<label style="font-size:12px;color:var(--sub)">新規目標<input type="number" min="0" step="1" data-newt="'+b.id+'" value="'+N2(b.newTarget)+'" style="width:70px;margin-left:4px"></label>'
+         +'<label style="font-size:12px;color:var(--sub)">新規（通常）目標<input type="number" min="0" step="1" data-newt="'+b.id+'" value="'+N2(b.newTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<button type="button" class="del" data-savetgt="'+b.id+'">保存</button>'
          +'<button type="button" class="del" data-bldel="'+b.id+'">削除</button></div>';
       }).join(""):'<p class="note">店舗ブロックが登録されていません。</p>';
@@ -1403,7 +1403,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
   };
   function ym2(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")}
   var mNow=ym2(new Date());
-  var TLABEL2={mnp:"MNP",new:"新規",cellup:"セルアップ",creca:"クレカ",gcreca:"Gクレカ",norton:"ノートン",ott:"OTT",setai:"世帯商材",net:"ネットワーク",denki:"でんき",gas:"ガス"};
+  var TLABEL2={mnp:"MNP",new:"新規（通常）",cellup:"セルアップ",creca:"クレカ",gcreca:"Gクレカ",norton:"ノートン",ott:"OTT",setai:"世帯商材",net:"ネットワーク",denki:"でんき",gas:"ガス"};
   var rec=[],tgt=[],st=0,sh=0,staffMap={},asBlockDocs=[];
   function stats(){
     var T=0,A=0;
@@ -1429,7 +1429,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     $("a-csv-target").onclick=function(){
       var rows=tgt.slice().sort(function(a,b){return (a.month||"").localeCompare(b.month||"")||(a.name||"").localeCompare(b.name||"")})
         .map(function(d){return [d.name,d.month,d.mnpTarget||0,d.newTarget||0]});
-      dl.save({filename:"月間目標_"+Date.now()+".csv",data:toCSV(["担当者","対象月","MNP目標","新規目標"],rows)})
+      dl.save({filename:"月間目標_"+Date.now()+".csv",data:toCSV(["担当者","対象月","MNP目標","新規（通常）目標"],rows)})
         .then(function(){$("a-csv-msg").textContent="書き出しました。"},function(){$("a-csv-msg").textContent="書き出せませんでした。"});
     };
     $("a-csv-shift").onclick=function(){
