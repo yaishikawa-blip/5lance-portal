@@ -179,6 +179,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .asv td.cell.changed{background:var(--l)}
 .asv td.cell.changed button{background:var(--l)}
 .asv td.corner{background:var(--panel)}
+#admin .dogrid .tw{overflow-x:auto}
+#admin .dogrid table{border-collapse:collapse;width:100%}
+#admin .dogrid th,#admin .dogrid td{border:1px solid var(--line);padding:8px 10px;font-size:13px;text-align:left;vertical-align:top}
+#admin .dogrid th{background:var(--bg);color:var(--sub);font-weight:700;font-size:12.5px}
+#admin .dogrid tbody tr:nth-child(even){background:var(--bg)}
+.do-missing{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--sub);background:var(--bg);line-height:1.8}
 .asv thead th{position:sticky;top:0;z-index:2;box-shadow:0 2px 4px -2px rgba(0,0,0,.2)}
 .asv td.ag{position:sticky;left:0;z-index:1;box-shadow:2px 0 4px -2px rgba(0,0,0,.2)}
 .asv thead th:first-child{left:0;z-index:3}
@@ -594,7 +600,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 </section>
 <section class="adm-page" id="adm-dayoff" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
-<div class="card"><h2>希望休一覧</h2>
+<div class="card dogrid"><h2>希望休一覧</h2>
 <p class="note" style="margin-top:0">スタッフが提出した希望休の一覧です。提出期限は毎月10日までです。</p>
 <div class="nav">
 <button class="nb" id="do-adm-prev">前の月</button><span id="do-adm-range"></span><button class="nb" id="do-adm-next">次の月</button><button class="nb" id="do-adm-today">対象月（来月）</button>
@@ -602,7 +608,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tw"><table><thead><tr><th>所属会社</th><th>スタッフ</th><th>提出日時</th><th>希望休日</th></tr></thead><tbody id="do-adm-rows"></tbody></table></div>
 <div id="do-adm-empty" class="empty" hidden>この月の提出はまだありません。</div>
 <h3 style="font-size:14px;margin:16px 0 6px;color:var(--sub)">未提出のスタッフ</h3>
-<p class="note" id="do-adm-missing" style="margin-top:0"></p>
+<div id="do-adm-missing" class="do-missing"></div>
 </div>
 </section>
 <section class="adm-page" id="adm-staff" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
@@ -1386,7 +1392,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     var DAYS=14;
     var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"],["c6","クローザー"],["c7","クローザー"],["c8","クローザー"],["c9","クローザー"]];
     var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー",c6:"クローザー",c7:"クローザー",c8:"クローザー",c9:"クローザー"};
-    var agencies=[],blocks=[],staffNames=[];
+    var agencies=[],blocks=[],staffNames=[],dayoffMap={};
     var winStart=new Date();winStart.setHours(0,0,0,0);
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
     function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -1516,7 +1522,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         var found=false;
         list.forEach(function(s){
           if(s.name===curName)found=true;
-          opts+='<option value="'+esc2(s.name)+'"'+(s.name===curName?" selected":"")+'>'+esc2(s.name)+'</option>';
+          var off=dayoffMap[s.name]&&dayoffMap[s.name][d];
+          opts+='<option value="'+esc2(s.name)+'"'+(s.name===curName?" selected":"")+'>'+esc2(s.name)+(off?"（希望休）":"")+'</option>';
         });
         if(curName&&!found)opts+='<option value="'+esc2(curName)+'" selected>'+esc2(curName)+'（名簿未登録）</option>';
         sel.innerHTML=opts;
@@ -1564,11 +1571,20 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       if(bulk){
         var bl=blocks.filter(function(x){return x.id===blId})[0];
         if(!bl){closeStaffModal();return}
+        if(v&&dayoffMap[v]){
+          var conflict=[],cur0=parseD(bl.start),end0=parseD(bl.end);
+          while(cur0<=end0){var k0=fmtD(cur0);if(dayoffMap[v][k0])conflict.push(k0);cur0=addD(cur0,1)}
+          if(conflict.length){alert(v+"さんは、この期間中に希望休の申請があるため（"+conflict.join("、")+"）、一括設定できません。希望休以外の日は個別に設定してください。");return}
+        }
         var cellsPatch={},metaPatch={},cur=parseD(bl.start),end=parseD(bl.end);
         while(cur<=end){var k=fmtD(cur);cellsPatch[k]=v||null;metaPatch[k]=flag;cur=addD(cur,1)}
         var patch={cells:{},cellMeta:{}};patch.cells[role]=cellsPatch;patch.cellMeta[role]=metaPatch;
         db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
         closeStaffModal();
+        return;
+      }
+      if(v&&dayoffMap[v]&&dayoffMap[v][d]){
+        alert(v+"さんは "+d+" に希望休を申請しているため、割り当てできません。");
         return;
       }
       var patch={cells:{},cellMeta:{}};patch.cells[role]={};patch.cells[role][d]=v||null;patch.cellMeta[role]={};patch.cellMeta[role][d]=flag;
@@ -1691,6 +1707,14 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     db.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
     db.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
     db.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderTable()},function(){});
+    db.collection("dayoffRequests").onSnapshot(function(sn){
+      dayoffMap={};
+      sn.docs.forEach(function(x){
+        var v=x.data();if(!v.name||!v.dates)return;
+        dayoffMap[v.name]=dayoffMap[v.name]||{};
+        v.dates.forEach(function(ds){dayoffMap[v.name][ds]=true});
+      });
+    },function(){});
     renderLists();renderTable();
   })();
 
