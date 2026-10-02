@@ -490,6 +490,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button type="button" class="tile" data-adm="adm-staff" style="--tc:var(--lt)"><span class="ic">👥</span><b>スタッフ一覧</b><span>実績報告用の名前・所属会社</span></button>
 <button type="button" class="tile" data-adm="adm-access" style="--tc:var(--bad)"><span class="ic">🚫</span><b>アクセス権限</b><span>退職者などの利用停止</span></button>
 <button type="button" class="tile" data-adm="adm-logs" style="--tc:var(--sat)"><span class="ic">📜</span><b>アクセスログ</b><span>誰がいつ利用したか</span></button>
+<button type="button" class="tile" data-adm="adm-dayoff" style="--tc:var(--lt)"><span class="ic">🙋</span><b>希望休一覧</b><span>スタッフの提出状況を確認</span></button>
 <button type="button" class="tile" data-adm="adm-memo" style="--tc:var(--acc)"><span class="ic">📝</span><b>管理者メモ</b><span>管理者だけが見られるメモ</span></button>
 <button type="button" class="tile" data-adm="adm-export" style="--tc:var(--et)"><span class="ic">📤</span><b>データの書き出し</b><span>CSVで書き出す</span></button>
 <button type="button" class="tile" data-adm="adm-cleanup" style="--tc:var(--bad)"><span class="ic">🗑️</span><b>データの整理</b><span>記録の削除</span></button>
@@ -590,6 +591,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tw"><table><thead><tr><th>日付</th><th>名前</th><th>メール</th><th>最終アクセス</th><th>回数</th><th></th></tr></thead><tbody id="log-rows"></tbody></table></div>
 <div id="log-empty" class="empty" hidden>記録がまだありません。</div>
 <div class="msg" id="log-msg" role="status" style="font-size:13px;margin-top:6px"></div>
+</div>
+</section>
+<section class="adm-page" id="adm-dayoff" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
+<div class="card"><h2>希望休一覧</h2>
+<p class="note" style="margin-top:0">スタッフが提出した希望休の一覧です。提出期限は毎月10日までです。</p>
+<div class="nav">
+<button class="nb" id="do-adm-prev">前の月</button><span id="do-adm-range"></span><button class="nb" id="do-adm-next">次の月</button><button class="nb" id="do-adm-today">対象月（来月）</button>
+</div>
+<div class="tw"><table><thead><tr><th>所属会社</th><th>スタッフ</th><th>提出日時</th><th>希望休日</th></tr></thead><tbody id="do-adm-rows"></tbody></table></div>
+<div id="do-adm-empty" class="empty" hidden>この月の提出はまだありません。</div>
+<h3 style="font-size:14px;margin:16px 0 6px;color:var(--sub)">未提出のスタッフ</h3>
+<p class="note" id="do-adm-missing" style="margin-top:0"></p>
 </div>
 </section>
 <section class="adm-page" id="adm-staff" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
@@ -1696,7 +1709,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("a-uid").textContent=fu?("ログイン中: "+fu.email+" ／ あなたのUID: "+fu.uid+"（管理者の書き込み権限が有効にならない場合は、このUIDをFirestoreのadminsコレクションに登録してください）"):"";
     }catch(e){}
   }
-  var ADM_PAGES=["adm-targets","adm-ashift","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-staff"];
+  var ADM_PAGES=["adm-targets","adm-ashift","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-dayoff","adm-staff"];
   function showAdmPage(id){
     $("adm-menu").hidden=(id!=="menu");
     ADM_PAGES.forEach(function(p){$(p).hidden=(p!==id)});
@@ -1855,6 +1868,44 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("log-msg").style.color="var(--bad)";
       $("log-msg").textContent="ログを読み込めませんでした（Firestoreのadminsコレクションへの登録が必要です）。";
     });
+  })();
+  (function(){
+    function esc5(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+    function fmtDT2(t){var d=new Date(t);return (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+    var doReqs=[],doStaff=[],doCompanyMap={};
+    var doCursor=new Date();doCursor.setDate(1);doCursor.setMonth(doCursor.getMonth()+1);
+    function doMonthKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+    function renderDoAdm(){
+      var mk=doMonthKey(doCursor);
+      $("do-adm-range").textContent=doCursor.getFullYear()+"年"+(doCursor.getMonth()+1)+"月";
+      var list=doReqs.filter(function(r){return r.month===mk&&r.dates&&r.dates.length});
+      list.sort(function(a,b){return (a.name||"").localeCompare(b.name||"","ja")});
+      $("do-adm-rows").innerHTML=list.map(function(r){
+        var co=doCompanyMap[r.name]||"";
+        var ds=(r.dates||[]).slice().sort().map(function(d){var p=d.split("-");return Number(p[1])+"/"+Number(p[2])}).join("、");
+        return '<tr><td>'+esc5(co||"－")+'</td><td>'+esc5(r.name||"")+'</td><td>'+(r.updatedAt?fmtDT2(r.updatedAt):"")+'</td><td style="text-align:left">'+esc5(ds)+'</td></tr>';
+      }).join("");
+      $("do-adm-empty").hidden=list.length>0;
+      var submitted={};list.forEach(function(r){submitted[r.name]=1});
+      var missing=doStaff.filter(function(n){return !submitted[n]});
+      $("do-adm-missing").textContent=missing.length?missing.join("、"):"（登録中の全スタッフが提出済みです）";
+    }
+    $("do-adm-prev").onclick=function(){doCursor.setMonth(doCursor.getMonth()-1);renderDoAdm()};
+    $("do-adm-next").onclick=function(){doCursor.setMonth(doCursor.getMonth()+1);renderDoAdm()};
+    $("do-adm-today").onclick=function(){doCursor=new Date();doCursor.setDate(1);doCursor.setMonth(doCursor.getMonth()+1);renderDoAdm()};
+    db.collection("dayoffRequests").onSnapshot(function(sn){
+      doReqs=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});
+      renderDoAdm();
+    },function(){});
+    db.collection("staff").onSnapshot(function(sn){
+      doStaff=[];doCompanyMap={};
+      sn.docs.forEach(function(x){
+        var v=x.data();if(!v.name)return;
+        doStaff.push(v.name);
+        if(v.individual)doCompanyMap[v.name]="個";else if(v.company)doCompanyMap[v.name]=v.company;
+      });
+      renderDoAdm();
+    },function(){});
   })();
 }).catch(function(){});
 })();
