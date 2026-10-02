@@ -177,6 +177,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #admin .asgrid .row2:last-child{border-bottom:0}
 #admin .asgrid .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink)}
 #admin .asgrid .del:hover{border-color:var(--bad);color:var(--bad)}
+#stfco-list .row2{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+#stfco-list .row2:last-child{border-bottom:0}
+#stf-list .del,#stfco-list .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink);font-size:12px}
+#stf-list .del:hover,#stfco-list .del:hover{border-color:var(--bad);color:var(--bad)}
+#stf-list .stf-row{padding:10px 0;border-bottom:1px solid var(--line)}
+#stf-list .stf-row:last-child{border-bottom:0}
+#stf-list .stf-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+#stf-list .stf-top b{font-size:14px}
+#stf-list .stf-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--sub)}
+#stf-list .stf-controls select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;max-width:160px}
 
 #gate{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:28px 20px;text-align:center;margin-top:40px}
 #gate h1{font-size:20px;margin:0 0 8px}#gate p{color:var(--sub);margin:0}
@@ -1060,11 +1070,13 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     };
     function render2(){
       $("stf-list").innerHTML=st2.length?st2.map(function(s){
-        return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(s.name)+stfTagHtml(s)+'</span>'
-         +'<select data-company="'+s.id+'" style="width:160px;margin-left:4px">'+companyOptionsHTML(s.company)+'</select>'
-         +'<label style="font-size:12px;color:var(--sub);margin-left:4px;white-space:nowrap"><input type="checkbox" data-individual="'+s.id+'"'+(s.individual?" checked":"")+'> 個人事業主</label>'
+        return '<div class="stf-row">'
+         +'<div class="stf-top"><b>'+esc2(s.name)+'</b>'+stfTagHtml(s)+'<button type="button" class="del" data-stfdel="'+s.id+'" style="margin-left:auto">削除</button></div>'
+         +'<div class="stf-controls">'
+         +'<select data-company="'+s.id+'">'+companyOptionsHTML(s.company)+'</select>'
+         +'<label style="white-space:nowrap"><input type="checkbox" data-individual="'+s.id+'"'+(s.individual?" checked":"")+'> 個人事業主</label>'
          +'<button type="button" class="del" data-savecompany="'+s.id+'">保存</button>'
-         +'<button type="button" class="del" data-stfdel="'+s.id+'">削除</button></div>';
+         +'</div></div>';
       }).join(""):'<p class="note">スタッフが登録されていません。</p>';
     }
     $("stf-list").onclick=function(ev){
@@ -1077,7 +1089,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       }
       var sv=ev.target.closest("[data-savecompany]");
       if(sv){
-        var row=sv.closest(".row2");if(!row)return;
+        var row=sv.closest(".stf-row");if(!row)return;
         var co=row.querySelector('[data-company="'+sv.dataset.savecompany+'"]').value;
         var ind=row.querySelector('[data-individual="'+sv.dataset.savecompany+'"]').checked;
         db.doc("staff/"+sv.dataset.savecompany).update({company:co,individual:ind}).catch(function(){alert("保存できませんでした。")});
