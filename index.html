@@ -313,6 +313,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <header><h1>実績管理</h1></header>
 
 <section class="box"><h2>現場ごとの期間別達成率</h2>
+<label style="display:block;margin-bottom:12px">週目で一覧表示（任意）
+<select id="st-week" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
+<option value="">個別の現場を選んで表示する</option>
+<option value="1">1週目をすべて一覧表示</option>
+<option value="2">2週目をすべて一覧表示</option>
+<option value="3">3週目をすべて一覧表示</option>
+<option value="4">4週目をすべて一覧表示</option>
+<option value="5">5週目をすべて一覧表示</option>
+</select>
+</label>
 <label style="display:block;margin-bottom:12px">対象の現場（代理店シフト）
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
@@ -350,6 +360,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
       <span id="as-range"></span>
       <button class="nb" id="as-next" aria-label="次の期間">次の期間</button>
       <button class="nb" id="as-today">今日</button>
+      <select id="as-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+        <option value="">期間で表示（すべて）</option>
+        <option value="1">1週目だけ一覧表示</option>
+        <option value="2">2週目だけ一覧表示</option>
+        <option value="3">3週目だけ一覧表示</option>
+        <option value="4">4週目だけ一覧表示</option>
+        <option value="5">5週目だけ一覧表示</option>
+      </select>
     </div>
   </header>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
@@ -397,6 +415,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <input id="as-bl-nm" required maxlength="60" placeholder="店舗名（例：シーナシーナ青森/東晴）" style="flex:2 1 220px">
 <label style="font-size:13px;color:var(--sub)">開始<input id="as-bl-start" type="date" required style="display:block;margin-top:2px"></label>
 <label style="font-size:13px;color:var(--sub)">終了<input id="as-bl-end" type="date" required style="display:block;margin-top:2px"></label>
+<label style="font-size:13px;color:var(--sub)">週目<select id="as-bl-week" required style="display:block;margin-top:2px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 6px">
+<option value="">選択</option>
+<option value="1">1週目</option>
+<option value="2">2週目</option>
+<option value="3">3週目</option>
+<option value="4">4週目</option>
+<option value="5">5週目</option>
+</select></label>
 <label style="font-size:13px;color:var(--sub)">MNP目標<input id="as-bl-mnp" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
 <label style="font-size:13px;color:var(--sub)">新規目標<input id="as-bl-new" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
 <button class="btn" type="submit">ブロックを追加</button>
@@ -404,6 +430,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">割り当ての編集</h3>
 <div class="nav">
 <button class="nb" id="as-adm-prev">前の期間</button><span id="as-adm-range"></span><button class="nb" id="as-adm-next">次の期間</button><button class="nb" id="as-adm-today">今日</button>
+<select id="as-adm-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+<option value="">期間で表示（すべて）</option>
+<option value="1">1週目だけ一覧表示</option>
+<option value="2">2週目だけ一覧表示</option>
+<option value="3">3週目だけ一覧表示</option>
+<option value="4">4週目だけ一覧表示</option>
+<option value="5">5週目だけ一覧表示</option>
+</select>
 </div>
 <div id="as-adm-empty" class="empty" hidden>店舗ブロックがまだ登録されていません。</div>
 <div class="tw"><table id="as-adm-table" class="asv"></table></div>
@@ -686,14 +720,7 @@ function blockStaff(b){
 }
 var blocks=[],events=[];
 function selectedBlock(){return blocks.filter(function(b){return b.id===$("st-period").value})[0]}
-function render(){
-  var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
-  var curSel=$("st-period").value;
-  $("st-period").innerHTML=sorted.length?sorted.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(blockLabel(b))+'</option>'}).join(""):'<option value="">現場（シフト）が未登録です</option>';
-  if(curSel&&sorted.some(function(b){return b.id===curSel}))$("st-period").value=curSel;
-
-  var b=selectedBlock();
-  if(!b){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-empty").hidden=false;return}
+function rowFor(b){
   var staffArr=blockStaff(b);
   var mnp=0,neu=0;
   events.forEach(function(ev){
@@ -703,13 +730,36 @@ function render(){
     if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
   });
   var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
-  $("st-rows").innerHTML='<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td>'+esc(staffArr.join("、")||"未設定")+'</td>'
+  return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td>'+esc(staffArr.join("、")||"未設定")+'</td>'
    +'<td>'+prog(mnp,mt)+'</td><td>'+prog(neu,nt)+'</td>'
    +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
+}
+function render(){
+  var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
+  var curSel=$("st-period").value;
+  $("st-period").innerHTML=sorted.length?sorted.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(blockLabel(b))+'</option>'}).join(""):'<option value="">現場（シフト）が未登録です</option>';
+  if(curSel&&sorted.some(function(b){return b.id===curSel}))$("st-period").value=curSel;
+
+  var wk=$("st-week").value;
+  if(wk){
+    $("st-period").disabled=true;
+    var list=blocks.filter(function(b){return (b.week||"")===wk}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
+    if(!list.length){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-empty").hidden=false;return}
+    $("st-rows").innerHTML=list.map(rowFor).join("");
+    $("st-foot").innerHTML="";
+    $("st-empty").hidden=true;
+    return;
+  }
+  $("st-period").disabled=false;
+
+  var b=selectedBlock();
+  if(!b){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-empty").hidden=false;return}
+  $("st-rows").innerHTML=rowFor(b);
   $("st-foot").innerHTML="";
   $("st-empty").hidden=true;
 }
 $("st-period").onchange=render;
+$("st-week").onchange=render;
 render();
 claude.use("db").then(function(d){
   if(!d)return;
@@ -728,6 +778,17 @@ var winStart=new Date();winStart.setHours(0,0,0,0);
 function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
 function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));return a}
+function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
+function weekFilter(){return $("as-week").value}
+function visibleBlocks(){var wk=weekFilter();return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks}
+function weekDateList(vb){
+  var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
+  var e=vb.reduce(function(a,b){return !a||b.end>a?b.end:a},null);
+  if(!s||!e)return[];
+  var a=[],cur=parseD(s),end=parseD(e);
+  while(cur<=end){a.push(new Date(cur));cur=addD(cur,1)}
+  return a;
+}
 function inRange(b,ds){return ds>=b.start&&ds<=b.end}
 function siteRowCells(b,ds,kind){
   var out="",i=0;
@@ -746,7 +807,7 @@ function siteRowCells(b,ds,kind){
   }
   return out;
 }
-function buildTable(ds){
+function buildTable(ds,vb){
   var head="<tr><th class=\"corner\">代理店</th>"+ds.map(function(d){
     var c=d.getDay()===6?"sat":d.getDay()===0?"sun":"";
     return '<th class="'+c+'">'+WD[d.getDay()]+"<small>"+(d.getMonth()+1)+"/"+d.getDate()+"</small></th>";
@@ -754,7 +815,7 @@ function buildTable(ds){
   var body="";
   var aList=agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)});
   aList.forEach(function(ag){
-    var abs=blocks.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
+    var abs=vb.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
     if(!abs.length)return;
     var rowCount=abs.length*(ROLES.length+1),first=true;
     abs.forEach(function(b){
@@ -767,14 +828,22 @@ function buildTable(ds){
   return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
 }
 function render(){
-  var ds=dateList(),e=ds[ds.length-1];
-  $("as-range").textContent=winStart.getFullYear()+"年"+(winStart.getMonth()+1)+"月"+winStart.getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
-  $("as-table").innerHTML=buildTable(ds);
-  $("as-empty").hidden=blocks.length>0;
+  var wk=weekFilter(),vb=visibleBlocks();
+  $("as-prev").disabled=$("as-next").disabled=$("as-today").disabled=!!wk;
+  var ds=wk?weekDateList(vb):dateList();
+  if(!ds.length){
+    $("as-range").textContent=wk?wk+"週目のブロックはまだありません":"";
+  }else{
+    var e=ds[ds.length-1];
+    $("as-range").textContent=(wk?wk+"週目　":"")+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
+  }
+  $("as-table").innerHTML=buildTable(ds,vb);
+  $("as-empty").hidden=vb.length>0;
 }
 $("as-prev").onclick=function(){winStart=addD(winStart,-7);render()};
 $("as-next").onclick=function(){winStart=addD(winStart,7);render()};
 $("as-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);render()};
+$("as-week").onchange=render;
 render();
 claude.use("db").then(function(d){
   if(!d)return;
@@ -875,6 +944,17 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
     function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
     function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));return a}
+    function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
+    function weekFilter(){return $("as-adm-week").value}
+    function visibleBlocks(){var wk=weekFilter();return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks}
+    function weekDateList(vb){
+      var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
+      var e=vb.reduce(function(a,b){return !a||b.end>a?b.end:a},null);
+      if(!s||!e)return[];
+      var a=[],cur=parseD(s),end=parseD(e);
+      while(cur<=end){a.push(new Date(cur));cur=addD(cur,1)}
+      return a;
+    }
     function inRange(b,ds){return ds>=b.start&&ds<=b.end}
     function siteRowCells(b,ds,kind){
       var out="",i=0;
@@ -893,7 +973,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       }
       return out;
     }
-    function buildTable(ds){
+    function buildTable(ds,vb){
       var head="<tr><th class=\"corner\">代理店</th>"+ds.map(function(d){
         var c=d.getDay()===6?"sat":d.getDay()===0?"sun":"";
         return '<th class="'+c+'">'+WD[d.getDay()]+"<small>"+(d.getMonth()+1)+"/"+d.getDate()+"</small></th>";
@@ -901,7 +981,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       var body="";
       var aList=agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)});
       aList.forEach(function(ag){
-        var abs=blocks.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
+        var abs=vb.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
         if(!abs.length)return;
         var rowCount=abs.length*(ROLES.length+1),first=true;
         abs.forEach(function(b){
@@ -914,10 +994,21 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
     }
     function renderTable(){
-      var ds=dateList(),e=ds[ds.length-1];
-      $("as-adm-range").textContent=winStart.getFullYear()+"年"+(winStart.getMonth()+1)+"月"+winStart.getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
-      $("as-adm-table").innerHTML=buildTable(ds);
-      $("as-adm-empty").hidden=blocks.length>0;
+      var wk=weekFilter(),vb=visibleBlocks();
+      $("as-adm-prev").disabled=$("as-adm-next").disabled=$("as-adm-today").disabled=!!wk;
+      var ds=wk?weekDateList(vb):dateList();
+      if(!ds.length){
+        $("as-adm-range").textContent=wk?wk+"週目のブロックはまだありません":"";
+      }else{
+        var e=ds[ds.length-1];
+        $("as-adm-range").textContent=(wk?wk+"週目　":"")+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
+      }
+      $("as-adm-table").innerHTML=buildTable(ds,vb);
+      $("as-adm-empty").hidden=vb.length>0;
+    }
+    var WEEK_LABEL={1:"1週目",2:"2週目",3:"3週目",4:"4週目",5:"5週目"};
+    function weekSelectHTML(cur){
+      return [1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(cur)===String(n)?" selected":"")+'>'+WEEK_LABEL[n]+'</option>'}).join("");
     }
     function renderLists(){
       $("as-ag-list").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){
@@ -926,6 +1017,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("as-bl-ag").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){return '<option value="'+esc2(a.name)+'">'+esc2(a.name)+'</option>'}).join(""):'<option value="">先に代理店を追加してください</option>';
       $("as-bl-list").innerHTML=blocks.length?blocks.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(b){
         return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(b.agency)+' ／ '+esc2(b.name)+' （'+b.start+'〜'+b.end+'）</span>'
+         +'<label style="font-size:12px;color:var(--sub)">週目<select data-week="'+b.id+'" style="margin-left:4px">'+weekSelectHTML(b.week)+'</select></label>'
          +'<label style="font-size:12px;color:var(--sub)">MNP目標<input type="number" min="0" step="1" data-mnp="'+b.id+'" value="'+N2(b.mnpTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<label style="font-size:12px;color:var(--sub)">新規目標<input type="number" min="0" step="1" data-newt="'+b.id+'" value="'+N2(b.newTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<button type="button" class="del" data-savetgt="'+b.id+'">保存</button>'
@@ -935,6 +1027,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     $("as-adm-prev").onclick=function(){winStart=addD(winStart,-7);renderTable()};
     $("as-adm-next").onclick=function(){winStart=addD(winStart,7);renderTable()};
     $("as-adm-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);renderTable()};
+    $("as-adm-week").onchange=renderTable;
     function openStaffModal(bl,role,d){
       var ov=$("stfm-ov"),sel=$("stfm-name");
       var cur=(bl.cells&&bl.cells[role]&&bl.cells[role][d])||"";
@@ -995,11 +1088,11 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     };
     $("as-bl-f").onsubmit=function(ev){
       ev.preventDefault();
-      var ag=$("as-bl-ag").value,nm=$("as-bl-nm").value.trim(),s=$("as-bl-start").value,e=$("as-bl-end").value;
-      if(!ag||!nm||!s||!e)return;
+      var ag=$("as-bl-ag").value,nm=$("as-bl-nm").value.trim(),s=$("as-bl-start").value,e=$("as-bl-end").value,wk=$("as-bl-week").value;
+      if(!ag||!nm||!s||!e||!wk)return;
       if(s>e){alert("終了日は開始日より後にしてください。");return}
       var mt=N2($("as-bl-mnp").value),nt=N2($("as-bl-new").value);
-      db.collection("ashiftBlocks").add({agency:ag,name:nm,start:s,end:e,order:Date.now(),cells:{},mnpTarget:mt,newTarget:nt}).catch(fail2);
+      db.collection("ashiftBlocks").add({agency:ag,name:nm,start:s,end:e,week:wk,order:Date.now(),cells:{},mnpTarget:mt,newTarget:nt}).catch(fail2);
       this.reset();
     };
     $("as-bl-list").onclick=function(ev){
@@ -1015,7 +1108,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         var bid=s.dataset.savetgt,row=s.closest(".row2");if(!row)return;
         var mt=N2(row.querySelector('[data-mnp="'+bid+'"]').value);
         var nt=N2(row.querySelector('[data-newt="'+bid+'"]').value);
-        db.doc("ashiftBlocks/"+bid).update({mnpTarget:mt,newTarget:nt}).catch(fail2);
+        var wk=row.querySelector('[data-week="'+bid+'"]').value;
+        db.doc("ashiftBlocks/"+bid).update({mnpTarget:mt,newTarget:nt,week:wk}).catch(fail2);
       }
     };
     db.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
