@@ -816,7 +816,7 @@ function effSlots(b){
   return Math.min(Math.max(s,1),ROLES.length);
 }
 function buildTable(ds,vb){
-  var head="<tr><th class=\"corner\">代理店</th>"+ds.map(function(d){
+  var head="<tr><th class=\"corner\">代理店</th><th class=\"corner\">役割</th>"+ds.map(function(d){
     var c=d.getDay()===6?"sat":d.getDay()===0?"sun":"";
     return '<th class="'+c+'">'+WD[d.getDay()]+"<small>"+(d.getMonth()+1)+"/"+d.getDate()+"</small></th>";
   }).join("")+"</tr>";
@@ -829,7 +829,7 @@ function buildTable(ds,vb){
     abs.forEach(function(b){
       body+="<tr>";
       if(first){body+='<td class="ag" rowspan="'+rowCount+'">'+esc(ag.name)+"</td>";first=false}
-      body+=siteRowCells(b,ds,"header")+"</tr>";
+      body+='<td class="role"></td>'+siteRowCells(b,ds,"header")+"</tr>";
       ROLES.slice(0,effSlots(b)).forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+"</td>"+siteRowCells(b,ds,r[0])+"</tr>"});
     });
   });
@@ -990,7 +990,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return Math.min(Math.max(s,1),ROLES.length);
     }
     function buildTable(ds,vb){
-      var head="<tr><th class=\"corner\">代理店</th>"+ds.map(function(d){
+      var head="<tr><th class=\"corner\">代理店</th><th class=\"corner\">役割</th>"+ds.map(function(d){
         var c=d.getDay()===6?"sat":d.getDay()===0?"sun":"";
         return '<th class="'+c+'">'+WD[d.getDay()]+"<small>"+(d.getMonth()+1)+"/"+d.getDate()+"</small></th>";
       }).join("")+"</tr>";
@@ -1003,7 +1003,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         abs.forEach(function(b){
           body+="<tr>";
           if(first){body+='<td class="ag" rowspan="'+rowCount+'">'+esc2(ag.name)+"</td>";first=false}
-          body+=siteRowCells(b,ds,"header")+"</tr>";
+          body+='<td class="role"></td>'+siteRowCells(b,ds,"header")+"</tr>";
           ROLES.slice(0,effSlots(b)).forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+' <button type="button" class="del" data-bulkblock="'+b.id+'" data-bulkrole="'+r[0]+'" style="padding:2px 8px;font-size:11px">一括</button></td>'+siteRowCells(b,ds,r[0])+"</tr>"});
         });
       });
