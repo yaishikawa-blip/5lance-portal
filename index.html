@@ -182,6 +182,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .asv thead th{position:sticky;top:0;z-index:2;box-shadow:0 2px 4px -2px rgba(0,0,0,.2)}
 .asv td.ag{position:sticky;left:0;z-index:1;box-shadow:2px 0 4px -2px rgba(0,0,0,.2)}
 .asv thead th:first-child{left:0;z-index:3}
+#as-tablewrap,#as-adm-tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:6px}
 #admin .asgrid .row2{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
 #admin .asgrid .row2:last-child{border-bottom:0}
 #admin .asgrid .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink)}
@@ -421,7 +422,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
     </div>
   </header>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
-  <div class="tw"><table id="as-table" class="asv"></table></div>
+  <div class="tw" id="as-tablewrap"><table id="as-table" class="asv"></table></div>
   <p class="note">シフトの登録・変更は管理者専用ページで行います。</p>
   <div class="card" style="margin-top:20px"><h2>スタッフ別 稼働日数（月間）</h2>
   <div class="nav">
@@ -510,7 +511,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </select>
 </div>
 <div id="as-adm-empty" class="empty" hidden>店舗ブロックがまだ登録されていません。</div>
-<div class="tw"><table id="as-adm-table" class="asv"></table></div>
+<div class="tw" id="as-adm-tablewrap"><table id="as-adm-table" class="asv"></table></div>
 <p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。各行の「一括」ボタンを押すと、その役割の期間全体（開始日〜終了日）に同じ担当者をまとめて設定できます。「（空欄にする）」を選んで保存すると削除されます。</p>
 </div>
 </section>
