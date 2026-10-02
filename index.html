@@ -11,10 +11,10 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f3f5f9;--panel:#fff;--ink:#0c1a36;--sub:#5a6785;--line:#dde3ee;--acc:#003f98;--accbg:#dfe8f6;--warn:#b45309;--bad:#b42318;--track:#e3e8f1;--e:#dbe8fb;--et:#0b4aa8;--d:#e3e6f2;--dt:#03205f;--l:#fbe9d5;--lt:#9a4a16;--o:#eceef3;--ot:#6b7590;--sat:#2a5db0;--sun:#c23a3a;--onacc:#fff;--navy:#03205f;--bar:#03205f;
+:root{--bg:#f3f5f9;--panel:#fff;--ink:#0c1a36;--sub:#5a6785;--line:#dde3ee;--acc:#003f98;--accbg:#dfe8f6;--warn:#b45309;--warnbg:#fdecd9;--bad:#b42318;--badbg:#fbe4e1;--track:#e3e8f1;--e:#dbe8fb;--et:#0b4aa8;--d:#e3e6f2;--dt:#03205f;--l:#fbe9d5;--lt:#9a4a16;--o:#eceef3;--ot:#6b7590;--sat:#2a5db0;--sun:#c23a3a;--onacc:#fff;--navy:#03205f;--bar:#03205f;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a1226;--panel:#111c36;--ink:#e8edf8;--sub:#93a1c0;--line:#23325a;--acc:#5b9bff;--accbg:#12305f;--warn:#f0a35e;--bad:#f28b82;--track:#1c2a4d;--e:#12305f;--et:#8fbaff;--d:#1d2850;--dt:#a9c4ff;--l:#4a2f1c;--lt:#f0b585;--o:#1d2743;--ot:#8e9bbb;--sat:#7fa8ee;--sun:#f08a8a;--onacc:#06122b;--navy:#2f5fc4;--bar:#050b1a}}
-:root[data-theme="dark"]{--bg:#0a1226;--panel:#111c36;--ink:#e8edf8;--sub:#93a1c0;--line:#23325a;--acc:#5b9bff;--accbg:#12305f;--warn:#f0a35e;--bad:#f28b82;--track:#1c2a4d;--e:#12305f;--et:#8fbaff;--d:#1d2850;--dt:#a9c4ff;--l:#4a2f1c;--lt:#f0b585;--o:#1d2743;--ot:#8e9bbb;--sat:#7fa8ee;--sun:#f08a8a;--onacc:#06122b;--navy:#2f5fc4;--bar:#050b1a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a1226;--panel:#111c36;--ink:#e8edf8;--sub:#93a1c0;--line:#23325a;--acc:#5b9bff;--accbg:#12305f;--warn:#f0a35e;--warnbg:#3a2a16;--bad:#f28b82;--badbg:#3a1f1c;--track:#1c2a4d;--e:#12305f;--et:#8fbaff;--d:#1d2850;--dt:#a9c4ff;--l:#4a2f1c;--lt:#f0b585;--o:#1d2743;--ot:#8e9bbb;--sat:#7fa8ee;--sun:#f08a8a;--onacc:#06122b;--navy:#2f5fc4;--bar:#050b1a}}
+:root[data-theme="dark"]{--bg:#0a1226;--panel:#111c36;--ink:#e8edf8;--sub:#93a1c0;--line:#23325a;--acc:#5b9bff;--accbg:#12305f;--warn:#f0a35e;--warnbg:#3a2a16;--bad:#f28b82;--badbg:#3a1f1c;--track:#1c2a4d;--e:#12305f;--et:#8fbaff;--d:#1d2850;--dt:#a9c4ff;--l:#4a2f1c;--lt:#f0b585;--o:#1d2743;--ot:#8e9bbb;--sat:#7fa8ee;--sun:#f08a8a;--onacc:#06122b;--navy:#2f5fc4;--bar:#050b1a}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;line-height:1.5}
@@ -25,21 +25,24 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .tab[aria-selected="true"]{color:var(--acc);border-bottom-color:var(--acc)}
 .btn{color:var(--onacc)!important}
 #jisseki .wrap{max-width:960px;margin:0 auto;padding:20px 16px 48px}
-#jisseki header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-#jisseki h1{font-size:22px;margin:0}
+#jisseki header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:22px}
+#jisseki h1{font-size:23px;margin:0;letter-spacing:.01em}
+#jisseki .jlede{color:var(--sub);font-size:13px;margin:4px 0 0}
 #jisseki select,#jisseki input,#jisseki button{font:inherit;color:var(--ink)}
 #jisseki select,#jisseki input{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
 #jisseki .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
-#jisseki .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+#jisseki .box{background:var(--panel);border:1px solid var(--line);padding:18px 18px 20px;box-shadow:0 1px 2px rgba(3,32,95,.04),0 6px 16px -10px rgba(3,32,95,.12)}
 #jisseki .box small{color:var(--sub);display:block}
 #jisseki .box b{font-size:24px;font-variant-numeric:tabular-nums}
 #jisseki .big{border-left:6px solid var(--acc)}
-#jisseki h2{font-size:16px;margin:0 0 10px}
-#jisseki .tw{overflow-x:auto}
+#jisseki h2{font-size:16px;font-weight:700;margin:0 0 3px;color:var(--ink)}
+#jisseki .jsub{font-size:12.5px;color:var(--sub);margin:0 0 14px;font-weight:400}
+#jisseki .tw{overflow-x:auto;margin:0 -2px;padding:0 2px}
 #jisseki table{width:100%;border-collapse:collapse;min-width:560px;font-variant-numeric:tabular-nums}
-#jisseki th,#jisseki td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-#jisseki th{color:var(--sub);font-weight:500;font-size:13px}
+#jisseki th,#jisseki td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+#jisseki th{color:var(--ink);font-weight:700;font-size:12.5px;border-bottom:2px solid var(--line)}
 #jisseki th:first-child,#jisseki td:first-child{text-align:left}
+#jisseki tbody tr{transition:background-color .1s ease}
 #jisseki tbody tr:nth-child(even){background:var(--bg)}
 #jisseki tbody tr:hover{background:var(--accbg)}
 #jisseki th:first-child,#jisseki td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
@@ -47,26 +50,29 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki tbody tr:hover td:first-child{background:var(--accbg)}
 #jisseki tfoot td:first-child{background:var(--panel)}
 #jisseki td.sub{color:var(--sub);font-size:12px;font-weight:400}
-#jisseki th.sub{color:var(--sub);font-size:11px;font-weight:400}
+#jisseki th.sub{color:var(--sub);font-size:11px;font-weight:600}
 #jisseki .nametag{display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin:2px 3px 2px 0;white-space:nowrap}
 #jisseki .jcards{display:none}
-#jisseki .jcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
-#jisseki .jcard-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:16px}
-#jisseki .jcard-tags{margin-bottom:10px;line-height:1.8}
-#jisseki .jcard-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px;color:var(--sub)}
+#jisseki .jcard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(3,32,95,.04),0 6px 16px -10px rgba(3,32,95,.14)}
+#jisseki .jcard.mid{border-left-color:var(--warn)}
+#jisseki .jcard.low{border-left-color:var(--bad)}
+#jisseki .jcard-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;font-size:16px}
+#jisseki .jcard-head b{font-weight:700}
+#jisseki .jcard-tags{margin-bottom:12px;line-height:1.8}
+#jisseki .jcard-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px;color:var(--sub)}
 #jisseki .jcard-row:first-of-type{border-top:0}
 #jisseki .jcard .prog{align-items:flex-end}
-#jisseki .jcard-sub{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;gap:6px}
+#jisseki .jcard-sub{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;color:var(--sub);display:flex;flex-wrap:wrap;gap:6px}
 #jisseki .jcard-sub span{background:var(--bg);border-radius:5px;padding:3px 8px}
 @media (max-width:680px){
   #jisseki .tw{display:none}
   #jisseki .jcards{display:block}
 }
-#jisseki .bar{width:150px;height:10px;background:var(--track);border-radius:5px;overflow:hidden;display:inline-block;vertical-align:middle}
-#jisseki .bar i{display:block;height:100%;background:var(--acc)}
+#jisseki .bar{width:150px;height:8px;background:var(--track);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle}
+#jisseki .bar i{display:block;height:100%;background:var(--acc);border-radius:inherit}
 #jisseki .bar i.mid{background:var(--warn)}.bar i.low{background:var(--bad)}
-#jisseki .rate{display:inline-block;min-width:52px;font-weight:700}
-#jisseki .rate.ok{color:var(--acc)}.rate.mid{color:var(--warn)}.rate.low{color:var(--bad)}
+#jisseki .rate{display:inline-block;min-width:52px;font-weight:700;text-align:center;padding:3px 10px;border-radius:999px;background:var(--accbg)}
+#jisseki .rate.ok{color:var(--acc);background:var(--accbg)}.rate.mid{color:var(--warn);background:var(--warnbg)}.rate.low{color:var(--bad);background:var(--badbg)}
 #jisseki .del{background:none;border:0;color:var(--sub);cursor:pointer;padding:4px 8px;border-radius:4px}
 #jisseki .del:hover{color:var(--bad)}
 #jisseki form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;margin-top:16px}
@@ -288,7 +294,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki .prog .nums span{color:var(--sub);font-weight:400}
 #jisseki .prog .pct{font-size:12px;font-weight:700}
 #jisseki .prog .bar{width:74px}
-#jisseki .box + .box{margin-top:16px}
+#jisseki .box + .box{margin-top:24px}
+#jisseki section.box{margin-bottom:0}
 .tapgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px}
 .tapcard{display:flex;flex-direction:column;align-items:center;gap:4px}
 .tapbtn{width:100%;min-height:60px;border:none;border-radius:10px;background:var(--accbg);color:var(--acc);font-size:13px;font-weight:700;letter-spacing:.01em;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;user-select:none;transition:transform .08s ease}
@@ -349,9 +356,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </section>
 <section id="jisseki" role="tabpanel" hidden>
 <button class="back" data-p="home">トップへ戻る</button>
-<header><h1>実績管理</h1></header>
+<header><div><h1>実績管理</h1><p class="jlede">現場ごと・担当者ごとの達成状況をまとめて確認できます</p></div></header>
 
-<section class="box"><h2>現場ごとの期間別達成率</h2>
+<section class="box"><h2>現場ごとの期間別達成率</h2><p class="jsub">MNPと新規（通常）の内訳つきで、現場の進み具合を確認します</p>
 <label style="display:block;margin-bottom:12px">週目で一覧表示（任意）
 <select id="st-week" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
 <option value="">個別の現場を選んで表示する</option>
@@ -375,7 +382,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 
 <div class="wk" style="margin-top:20px"><button class="nb" id="j-prev">前の月</button><span id="j-range"></span><button class="nb" id="j-next">次の月</button><button class="nb" id="j-today">今月</button></div>
 
-<section class="box"><h2>個人ごとの月間実績・達成率</h2>
+<section class="box"><h2>個人ごとの月間実績・達成率</h2><p class="jsub">担当者ごとの今月の獲得数と、目標に対する達成率です</p>
 <div class="tw"><table>
 <thead><tr id="j-thead"></tr></thead>
 <tbody id="j-agg"></tbody><tfoot id="j-aggfoot"></tfoot></table></div>
@@ -384,7 +391,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <p class="note">達成率は、この月に報告された記録を合計し、月間目標で割った値です。月間目標は管理者が設定します。</p>
 </section>
 
-<section class="box"><h2>獲得の記録一覧</h2>
+<section class="box"><h2>獲得の記録一覧</h2><p class="jsub">1件ずつの記録です。押し間違いはここから取り消せます</p>
 <div class="tw"><table>
 <thead><tr><th>日時</th><th>担当者</th><th>種別</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
@@ -674,7 +681,7 @@ function render(){
     var t=tgt[n]||{},a=agg[n]||{};
     var g=N(a.mnp)+N(a.new),gt=N(t.mnpTarget)+N(t.newTarget),p=pct(g,gt),c=cls(p);
     var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("");
-    return '<div class="jcard"><div class="jcard-head"><b>'+esc(n)+'</b><span class="rate '+c+'">'+p+'%</span></div>'
+    return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc(n)+'</b><span class="rate '+c+'">'+p+'%</span></div>'
      +'<div class="jcard-row"><span>MNP</span>'+prog(a.mnp,t.mnpTarget)+'</div>'
      +'<div class="jcard-row"><span>新規（通常）</span>'+prog(a.new,t.newTarget)+'</div>'
      +'<div class="jcard-sub">'+subHtml+'</div></div>';
@@ -847,7 +854,7 @@ function cardFor(b){
   });
   var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
-  return '<div class="jcard"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
+  return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
    +'<div class="jcard-tags">'+staffHtml+'</div>'
    +'<div class="jcard-row"><span>MNP</span>'+prog(mnp,mt)+'</div>'
    +'<div class="jcard-row"><span>新規（通常）</span>'+prog(neu,nt)+'</div></div>';
