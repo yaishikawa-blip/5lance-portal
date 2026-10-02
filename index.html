@@ -186,6 +186,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #admin .asgrid .row2:last-child{border-bottom:0}
 #admin .asgrid .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink)}
 #admin .asgrid .del:hover{border-color:var(--bad);color:var(--bad)}
+.agrow{cursor:grab;touch-action:pan-y;user-select:none;background:var(--panel)}
+.agrow.dragging{opacity:.85;box-shadow:0 6px 14px rgba(0,0,0,.25);position:relative;z-index:5;cursor:grabbing;background:var(--bg)}
+.draghandle{color:var(--sub);font-size:17px;line-height:1;margin-right:2px}
 #stfco-list .row2{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
 #stfco-list .row2:last-child{border-bottom:0}
 #stf-list .del,#stfco-list .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink);font-size:12px}
@@ -472,7 +475,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
 <p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP・新規（通常）の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">代理店</h3>
-<p class="note" style="margin-top:0">↑↓でシフト表（代理店ごとの表示順）を並べ替えられます。</p>
+<p class="note" style="margin-top:0">項目を長押しすると好きな位置にドラッグでき、シフト表の表示順（代理店ごとの並び順）を変更できます。</p>
 <div id="as-ag-list" style="margin-bottom:10px"></div>
 <form id="as-ag-f" style="display:flex;gap:8px;margin-bottom:20px"><input id="as-ag-nm" required maxlength="20" placeholder="代理店名を入力"><button class="btn" type="submit">代理店を追加</button></form>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">店舗（現場）ブロック</h3>
@@ -1304,10 +1307,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return [1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(cur)===String(n)?" selected":"")+'>'+WEEK_LABEL[n]+'</option>'}).join("");
     }
     function renderLists(){
-      $("as-ag-list").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a,i,arr){
-        return '<div class="row2"><span style="flex:1">'+esc2(a.name)+'</span>'
-         +'<button type="button" class="del" data-agup="'+a.id+'"'+(i===0?" disabled":"")+' aria-label="上へ" style="padding:3px 8px">↑</button>'
-         +'<button type="button" class="del" data-agdown="'+a.id+'"'+(i===arr.length-1?" disabled":"")+' aria-label="下へ" style="padding:3px 8px">↓</button>'
+      $("as-ag-list").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){
+        return '<div class="row2 agrow" data-agid="'+a.id+'"><span class="draghandle" aria-hidden="true">⠿</span><span style="flex:1">'+esc2(a.name)+'</span>'
          +'<button type="button" class="del" data-agdel="'+a.id+'">削除</button></div>';
       }).join(""):'<p class="note">代理店が登録されていません。</p>';
       $("as-bl-ag").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){return '<option value="'+esc2(a.name)+'">'+esc2(a.name)+'</option>'}).join(""):'<option value="">先に代理店を追加してください</option>';
@@ -1415,26 +1416,67 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       db.collection("ashiftAgencies").add({name:n,order:Date.now()}).catch(fail2);
       this.reset();
     };
-    function swapAgencyOrder(id,dir){
-      var sorted=agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)});
-      var i=sorted.findIndex(function(x){return x.id===id});
-      var j=i+dir;
-      if(i<0||j<0||j>=sorted.length)return;
-      var a=sorted[i],bb=sorted[j];
-      var oa=a.order||0,ob=bb.order||0;
-      db.doc("ashiftAgencies/"+a.id).update({order:ob}).catch(fail2);
-      db.doc("ashiftAgencies/"+bb.id).update({order:oa}).catch(fail2);
-    }
     $("as-ag-list").onclick=function(ev){
-      var up=ev.target.closest("[data-agup]"),down=ev.target.closest("[data-agdown]"),del=ev.target.closest("[data-agdel]");
-      if(up){swapAgencyOrder(up.dataset.agup,-1);return}
-      if(down){swapAgencyOrder(down.dataset.agdown,1);return}
-      if(!del)return;
+      var del=ev.target.closest("[data-agdel]");if(!del)return;
       var a=agencies.filter(function(x){return x.id===del.dataset.agdel})[0];if(!a)return;
       if(!confirm(a.name+"を削除しますか？この代理店に属する店舗ブロックも削除されます。"))return;
       db.doc("ashiftAgencies/"+a.id).delete().catch(fail2);
       blocks.filter(function(x){return x.agency===a.name}).forEach(function(x){db.doc("ashiftBlocks/"+x.id).delete().catch(function(){})});
     };
+    (function(){
+      var agList=$("as-ag-list");
+      var pressTimer=null,dragEl=null,startX=0,startY=0;
+      function agRows(){return Array.prototype.slice.call(agList.querySelectorAll(".agrow"))}
+      function clearPress(){clearTimeout(pressTimer);pressTimer=null}
+      function cancelOnMove(ev){
+        if(Math.abs(ev.clientX-startX)>8||Math.abs(ev.clientY-startY)>8){
+          clearPress();
+          document.removeEventListener("pointermove",cancelOnMove);
+        }
+      }
+      function onDragMove(ev){
+        if(!dragEl)return;
+        ev.preventDefault();
+        dragEl.style.transform="translateY("+(ev.clientY-startY)+"px)";
+        var others=agRows().filter(function(r){return r!==dragEl});
+        for(var i=0;i<others.length;i++){
+          var r=others[i],rect=r.getBoundingClientRect(),mid=rect.top+rect.height/2;
+          if(ev.clientY<mid){agList.insertBefore(dragEl,r);break}
+          if(i===others.length-1)agList.insertBefore(dragEl,r.nextSibling);
+        }
+      }
+      function onDragEnd(){
+        document.removeEventListener("pointermove",onDragMove);
+        document.removeEventListener("pointerup",onDragEnd);
+        document.removeEventListener("pointercancel",onDragEnd);
+        if(dragEl){
+          dragEl.classList.remove("dragging");
+          dragEl.style.transform="";
+          agRows().forEach(function(r,i){
+            var id=r.dataset.agid,a=agencies.filter(function(x){return x.id===id})[0];
+            if(a&&(a.order||0)!==i)db.doc("ashiftAgencies/"+id).update({order:i}).catch(fail2);
+          });
+        }
+        dragEl=null;
+      }
+      agList.addEventListener("pointerdown",function(ev){
+        if(ev.target.closest("button"))return;
+        var row=ev.target.closest(".agrow");if(!row)return;
+        startX=ev.clientX;startY=ev.clientY;
+        clearPress();
+        pressTimer=setTimeout(function(){
+          document.removeEventListener("pointermove",cancelOnMove);
+          dragEl=row;
+          row.classList.add("dragging");
+          try{if(navigator.vibrate)navigator.vibrate(30)}catch(e){}
+          document.addEventListener("pointermove",onDragMove,{passive:false});
+          document.addEventListener("pointerup",onDragEnd,{once:true});
+          document.addEventListener("pointercancel",onDragEnd,{once:true});
+        },380);
+        document.addEventListener("pointermove",cancelOnMove);
+        document.addEventListener("pointerup",function(){clearPress();document.removeEventListener("pointermove",cancelOnMove)},{once:true});
+      });
+    })();
     $("as-bl-f").onsubmit=function(ev){
       ev.preventDefault();
       var ag=$("as-bl-ag").value,nm=$("as-bl-nm").value.trim(),s=$("as-bl-start").value,e=$("as-bl-end").value,wk=$("as-bl-week").value;
