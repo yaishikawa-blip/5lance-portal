@@ -148,6 +148,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .asv td.cell button{width:100%;min-height:34px;border:1px solid transparent;border-radius:6px;background:transparent;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;padding:4px}
 .asv td.cell button:hover{border-color:var(--line);background:var(--panel)}
 .asv td.out{background:var(--o)}
+.asv td.cell.changed{background:var(--l)}
+.asv td.cell.changed button{background:var(--l)}
 .asv td.corner{background:var(--panel)}
 #admin .asgrid .row2{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
 #admin .asgrid .row2:last-child{border-bottom:0}
@@ -772,7 +774,7 @@ function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 var WD=["日","月","火","水","木","金","土"];
 var DAYS=14;
-var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"]];
+var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"],["c6","クローザー"],["c7","クローザー"],["c8","クローザー"],["c9","クローザー"]];
 var agencies=[],blocks=[];
 var winStart=new Date();winStart.setHours(0,0,0,0);
 function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -790,6 +792,8 @@ function weekDateList(vb){
   return a;
 }
 function inRange(b,ds){return ds>=b.start&&ds<=b.end}
+var CHANGE_WINDOW_MS=24*60*60*1000;
+function isChanged(b,kind,dstr){var t=b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr];return !!(t&&(Date.now()-t)<CHANGE_WINDOW_MS)}
 function siteRowCells(b,ds,kind){
   var out="",i=0;
   while(i<ds.length){
@@ -801,7 +805,7 @@ function siteRowCells(b,ds,kind){
       i+=span;
     }else{
       var val=(b.cells&&b.cells[kind]&&b.cells[kind][dstr])||"";
-      out+='<td class="cell">'+esc(val)+"</td>";
+      out+='<td class="cell'+(isChanged(b,kind,dstr)?" changed":"")+'">'+esc(val)+"</td>";
       i++;
     }
   }
@@ -945,8 +949,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function plainName(v){var m=/^\(([^)]*)\)\s*(.*)$/.exec(v||"");return (m?m[2]:String(v||"")).trim()}
     var WD=["日","月","火","水","木","金","土"];
     var DAYS=14;
-    var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"]];
-    var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー"};
+    var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"],["c6","クローザー"],["c7","クローザー"],["c8","クローザー"],["c9","クローザー"]];
+    var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー",c6:"クローザー",c7:"クローザー",c8:"クローザー",c9:"クローザー"};
     var agencies=[],blocks=[],staffNames=[];
     var winStart=new Date();winStart.setHours(0,0,0,0);
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -964,6 +968,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return a;
     }
     function inRange(b,ds){return ds>=b.start&&ds<=b.end}
+    var CHANGE_WINDOW_MS=24*60*60*1000;
+    function isChanged(b,kind,dstr){var t=b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr];return !!(t&&(Date.now()-t)<CHANGE_WINDOW_MS)}
     function siteRowCells(b,ds,kind){
       var out="",i=0;
       while(i<ds.length){
@@ -975,7 +981,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
           i+=span;
         }else{
           var val=(b.cells&&b.cells[kind]&&b.cells[kind][dstr])||"";
-          out+='<td class="cell"><button type="button" data-block="'+b.id+'" data-role="'+kind+'" data-date="'+dstr+'">'+esc2(val)+"</button></td>";
+          out+='<td class="cell'+(isChanged(b,kind,dstr)?" changed":"")+'"><button type="button" data-block="'+b.id+'" data-role="'+kind+'" data-date="'+dstr+'">'+esc2(val)+"</button></td>";
           i++;
         }
       }
@@ -1035,7 +1041,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         var es=effSlots(b);
         return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(b.agency)+' ／ '+esc2(b.name)+' （'+b.start+'〜'+b.end+'）</span>'
          +'<label style="font-size:12px;color:var(--sub)">週目<select data-week="'+b.id+'" style="margin-left:4px">'+weekSelectHTML(b.week)+'</select></label>'
-         +'<span style="font-size:12px;color:var(--sub)">稼働者 '+es+'名'+(es<ROLES.length?' <button type="button" class="del" data-addslot="'+b.id+'">＋追加</button>':'')+'</span>'
+         +'<span style="font-size:12px;color:var(--sub)">稼働者 '+es+'名'+(es<ROLES.length?' <button type="button" class="del" data-addslot="'+b.id+'">＋追加</button>':'')+(es>1?' <button type="button" class="del" data-removeslot="'+b.id+'">－減らす</button>':'')+'</span>'
          +'<label style="font-size:12px;color:var(--sub)">MNP目標<input type="number" min="0" step="1" data-mnp="'+b.id+'" value="'+N2(b.mnpTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<label style="font-size:12px;color:var(--sub)">新規目標<input type="number" min="0" step="1" data-newt="'+b.id+'" value="'+N2(b.newTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<button type="button" class="del" data-savetgt="'+b.id+'">保存</button>'
@@ -1106,17 +1112,18 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function saveStaffModal(v){
       var ov=$("stfm-ov"),blId=ov.dataset.block,role=ov.dataset.role,d=ov.dataset.date,bulk=ov.dataset.bulk==="1";
       if(!blId)return;
+      var now=Date.now();
       if(bulk){
         var bl=blocks.filter(function(x){return x.id===blId})[0];
         if(!bl){closeStaffModal();return}
-        var cellsPatch={},cur=parseD(bl.start),end=parseD(bl.end);
-        while(cur<=end){cellsPatch[fmtD(cur)]=v||null;cur=addD(cur,1)}
-        var patch={cells:{}};patch.cells[role]=cellsPatch;
+        var cellsPatch={},metaPatch={},cur=parseD(bl.start),end=parseD(bl.end);
+        while(cur<=end){var k=fmtD(cur);cellsPatch[k]=v||null;metaPatch[k]=now;cur=addD(cur,1)}
+        var patch={cells:{},cellMeta:{}};patch.cells[role]=cellsPatch;patch.cellMeta[role]=metaPatch;
         db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
         closeStaffModal();
         return;
       }
-      var patch={cells:{}};patch.cells[role]={};patch.cells[role][d]=v||null;
+      var patch={cells:{},cellMeta:{}};patch.cells[role]={};patch.cells[role][d]=v||null;patch.cellMeta[role]={};patch.cellMeta[role][d]=now;
       db.doc("ashiftBlocks/"+blId).update(patch).catch(fail2);
       closeStaffModal();
     }
@@ -1161,6 +1168,13 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         var bl3=blocks.filter(function(x){return x.id===ad.dataset.addslot})[0];if(!bl3)return;
         var ns=Math.min(ROLES.length,effSlots(bl3)+1);
         db.doc("ashiftBlocks/"+bl3.id).update({slots:ns}).catch(fail2);
+        return;
+      }
+      var rm=ev.target.closest("[data-removeslot]");
+      if(rm){
+        var bl4=blocks.filter(function(x){return x.id===rm.dataset.removeslot})[0];if(!bl4)return;
+        var ns2=Math.max(1,effSlots(bl4)-1);
+        db.doc("ashiftBlocks/"+bl4.id).update({slots:ns2}).catch(fail2);
         return;
       }
       var s=ev.target.closest("[data-savetgt]");
@@ -1249,7 +1263,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         .then(function(){$("a-csv-msg").textContent="書き出しました。"},function(){$("a-csv-msg").textContent="書き出せませんでした。"});
     };
     $("a-csv-shift").onclick=function(){
-      var ROLE_LABEL3={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー"};
+      var ROLE_LABEL3={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー",c6:"クローザー",c7:"クローザー",c8:"クローザー",c9:"クローザー"};
       var rows=[];
       asBlockDocs.forEach(function(b){
         var cells=b.cells||{};
