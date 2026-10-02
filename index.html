@@ -807,6 +807,14 @@ function siteRowCells(b,ds,kind){
   }
   return out;
 }
+function effSlots(b){
+  var s=Number(b.slots)||2;
+  for(var i=ROLES.length-1;i>=s;i--){
+    var r=ROLES[i][0],cells=b.cells&&b.cells[r];
+    if(cells&&Object.keys(cells).some(function(dk){return cells[dk]})){s=i+1;break}
+  }
+  return Math.min(Math.max(s,1),ROLES.length);
+}
 function buildTable(ds,vb){
   var head="<tr><th class=\"corner\">代理店</th>"+ds.map(function(d){
     var c=d.getDay()===6?"sat":d.getDay()===0?"sun":"";
@@ -817,12 +825,12 @@ function buildTable(ds,vb){
   aList.forEach(function(ag){
     var abs=vb.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
     if(!abs.length)return;
-    var rowCount=abs.length*(ROLES.length+1),first=true;
+    var rowCount=abs.reduce(function(sum,b){return sum+1+effSlots(b)},0),first=true;
     abs.forEach(function(b){
       body+="<tr>";
       if(first){body+='<td class="ag" rowspan="'+rowCount+'">'+esc(ag.name)+"</td>";first=false}
       body+=siteRowCells(b,ds,"header")+"</tr>";
-      ROLES.forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+"</td>"+siteRowCells(b,ds,r[0])+"</tr>"});
+      ROLES.slice(0,effSlots(b)).forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+"</td>"+siteRowCells(b,ds,r[0])+"</tr>"});
     });
   });
   return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
@@ -973,6 +981,14 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       }
       return out;
     }
+    function effSlots(b){
+      var s=N2(b.slots)||2;
+      for(var i=ROLES.length-1;i>=s;i--){
+        var r=ROLES[i][0],cells=b.cells&&b.cells[r];
+        if(cells&&Object.keys(cells).some(function(dk){return cells[dk]})){s=i+1;break}
+      }
+      return Math.min(Math.max(s,1),ROLES.length);
+    }
     function buildTable(ds,vb){
       var head="<tr><th class=\"corner\">代理店</th>"+ds.map(function(d){
         var c=d.getDay()===6?"sat":d.getDay()===0?"sun":"";
@@ -983,12 +999,12 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       aList.forEach(function(ag){
         var abs=vb.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
         if(!abs.length)return;
-        var rowCount=abs.length*(ROLES.length+1),first=true;
+        var rowCount=abs.reduce(function(sum,b){return sum+1+effSlots(b)},0),first=true;
         abs.forEach(function(b){
           body+="<tr>";
           if(first){body+='<td class="ag" rowspan="'+rowCount+'">'+esc2(ag.name)+"</td>";first=false}
           body+=siteRowCells(b,ds,"header")+"</tr>";
-          ROLES.forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+' <button type="button" class="del" data-bulkblock="'+b.id+'" data-bulkrole="'+r[0]+'" style="padding:2px 8px;font-size:11px">一括</button></td>'+siteRowCells(b,ds,r[0])+"</tr>"});
+          ROLES.slice(0,effSlots(b)).forEach(function(r){body+="<tr><td class=\"role\">"+r[1]+' <button type="button" class="del" data-bulkblock="'+b.id+'" data-bulkrole="'+r[0]+'" style="padding:2px 8px;font-size:11px">一括</button></td>'+siteRowCells(b,ds,r[0])+"</tr>"});
         });
       });
       return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
@@ -1016,8 +1032,10 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       }).join(""):'<p class="note">代理店が登録されていません。</p>';
       $("as-bl-ag").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){return '<option value="'+esc2(a.name)+'">'+esc2(a.name)+'</option>'}).join(""):'<option value="">先に代理店を追加してください</option>';
       $("as-bl-list").innerHTML=blocks.length?blocks.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(b){
+        var es=effSlots(b);
         return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(b.agency)+' ／ '+esc2(b.name)+' （'+b.start+'〜'+b.end+'）</span>'
          +'<label style="font-size:12px;color:var(--sub)">週目<select data-week="'+b.id+'" style="margin-left:4px">'+weekSelectHTML(b.week)+'</select></label>'
+         +'<span style="font-size:12px;color:var(--sub)">稼働者 '+es+'名'+(es<ROLES.length?' <button type="button" class="del" data-addslot="'+b.id+'">＋追加</button>':'')+'</span>'
          +'<label style="font-size:12px;color:var(--sub)">MNP目標<input type="number" min="0" step="1" data-mnp="'+b.id+'" value="'+N2(b.mnpTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<label style="font-size:12px;color:var(--sub)">新規目標<input type="number" min="0" step="1" data-newt="'+b.id+'" value="'+N2(b.newTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<button type="button" class="del" data-savetgt="'+b.id+'">保存</button>'
@@ -1127,7 +1145,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       if(!ag||!nm||!s||!e||!wk)return;
       if(s>e){alert("終了日は開始日より後にしてください。");return}
       var mt=N2($("as-bl-mnp").value),nt=N2($("as-bl-new").value);
-      db.collection("ashiftBlocks").add({agency:ag,name:nm,start:s,end:e,week:wk,order:Date.now(),cells:{},mnpTarget:mt,newTarget:nt}).catch(fail2);
+      db.collection("ashiftBlocks").add({agency:ag,name:nm,start:s,end:e,week:wk,order:Date.now(),cells:{},mnpTarget:mt,newTarget:nt,slots:2}).catch(fail2);
       this.reset();
     };
     $("as-bl-list").onclick=function(ev){
@@ -1136,6 +1154,13 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         var bl=blocks.filter(function(x){return x.id===d.dataset.bldel})[0];if(!bl)return;
         if(!confirm(bl.name+"を削除しますか？"))return;
         db.doc("ashiftBlocks/"+bl.id).delete().catch(fail2);
+        return;
+      }
+      var ad=ev.target.closest("[data-addslot]");
+      if(ad){
+        var bl3=blocks.filter(function(x){return x.id===ad.dataset.addslot})[0];if(!bl3)return;
+        var ns=Math.min(ROLES.length,effSlots(bl3)+1);
+        db.doc("ashiftBlocks/"+bl3.id).update({slots:ns}).catch(fail2);
         return;
       }
       var s=ev.target.closest("[data-savetgt]");
