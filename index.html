@@ -404,18 +404,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <header>
     <h1>シフト管理</h1>
     <div class="nav">
-      <button class="nb" id="as-prev" aria-label="前の期間">前の期間</button>
-      <span id="as-range"></span>
-      <button class="nb" id="as-next" aria-label="次の期間">次の期間</button>
-      <button class="nb" id="as-today">今日</button>
       <select id="as-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
-        <option value="">期間で表示（すべて）</option>
-        <option value="1">1週目だけ一覧表示</option>
-        <option value="2">2週目だけ一覧表示</option>
-        <option value="3">3週目だけ一覧表示</option>
-        <option value="4">4週目だけ一覧表示</option>
-        <option value="5">5週目だけ一覧表示</option>
+        <option value="1">1週目</option>
+        <option value="2">2週目</option>
+        <option value="3">3週目</option>
+        <option value="4">4週目</option>
+        <option value="5">5週目</option>
       </select>
+      <span id="as-range"></span>
     </div>
   </header>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
@@ -1017,13 +1013,12 @@ function buildTable(ds,vb){
 }
 function render(){
   var wk=weekFilter(),vb=visibleBlocks();
-  $("as-prev").disabled=$("as-next").disabled=$("as-today").disabled=!!wk;
-  var ds=wk?weekDateList(vb):dateList();
+  var ds=weekDateList(vb);
   if(!ds.length){
-    $("as-range").textContent=wk?wk+"週目のブロックはまだありません":"";
+    $("as-range").textContent=wk+"週目のブロックはまだありません";
   }else{
     var e=ds[ds.length-1];
-    $("as-range").textContent=(wk?wk+"週目　":"")+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
+    $("as-range").textContent=wk+"週目　"+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
   }
   $("as-table").innerHTML=buildTable(ds,vb);
   $("as-empty").hidden=vb.length>0;
@@ -1057,9 +1052,6 @@ function renderMonthly(){
   }).join("");
   $("as-mon-empty").hidden=names.length>0;
 }
-$("as-prev").onclick=function(){winStart=addD(winStart,-7);render()};
-$("as-next").onclick=function(){winStart=addD(winStart,7);render()};
-$("as-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);render()};
 $("as-week").onchange=render;
 $("as-mon-prev").onclick=function(){monCursor.setMonth(monCursor.getMonth()-1);renderMonthly()};
 $("as-mon-next").onclick=function(){monCursor.setMonth(monCursor.getMonth()+1);renderMonthly()};
