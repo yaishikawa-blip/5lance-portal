@@ -440,12 +440,26 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="btn" id="a-ok" style="border:0;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;background:var(--acc)">入室する</button>
 <div class="msg" id="a-lm" role="alert" style="color:var(--bad);font-size:13px;min-height:1.4em;margin-top:8px"></div></div>
 <div id="a-body" hidden>
+<div id="adm-menu">
 <div class="sum" aria-live="polite">
 <div class="box"><small>今月の達成率</small><b id="a-rate">-</b></div>
 <div class="box"><small>登録スタッフ数</small><b id="a-staff">-</b></div>
 <div class="box"><small>実績の登録件数</small><b id="a-rec">-</b></div>
 <div class="box"><small>代理店シフトの店舗ブロック数</small><b id="a-shift">-</b></div>
 </div>
+<div class="tiles">
+<button type="button" class="tile" data-adm="adm-targets" style="--tc:var(--acc)"><span class="ic">🎯</span><b>月間目標の設定</b><span>担当者ごとのMNP・新規（通常）目標</span></button>
+<button type="button" class="tile" data-adm="adm-ashift" style="--tc:var(--et)"><span class="ic">🏢</span><b>代理店シフト管理</b><span>現場・稼働者・目標の一元管理</span></button>
+<button type="button" class="tile" data-adm="adm-staff" style="--tc:var(--lt)"><span class="ic">👥</span><b>スタッフ一覧</b><span>実績報告用の名前・所属会社</span></button>
+<button type="button" class="tile" data-adm="adm-access" style="--tc:var(--bad)"><span class="ic">🚫</span><b>アクセス権限</b><span>退職者などの利用停止</span></button>
+<button type="button" class="tile" data-adm="adm-logs" style="--tc:var(--sat)"><span class="ic">📜</span><b>アクセスログ</b><span>誰がいつ利用したか</span></button>
+<button type="button" class="tile" data-adm="adm-memo" style="--tc:var(--acc)"><span class="ic">📝</span><b>管理者メモ</b><span>管理者だけが見られるメモ</span></button>
+<button type="button" class="tile" data-adm="adm-export" style="--tc:var(--et)"><span class="ic">📤</span><b>データの書き出し</b><span>CSVで書き出す</span></button>
+<button type="button" class="tile" data-adm="adm-cleanup" style="--tc:var(--bad)"><span class="ic">🗑️</span><b>データの整理</b><span>記録の削除</span></button>
+<button type="button" class="tile" data-adm="adm-password" style="--tc:var(--lt)"><span class="ic">🔑</span><b>パスワードの変更</b><span>管理者パスワードの変更</span></button>
+</div>
+</div>
+<section class="adm-page" id="adm-targets" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card tgrid"><h2>月間目標の設定</h2>
 <div class="nav">
 <button class="nb" id="jt-prev">前の月</button><span id="jt-range"></span><button class="nb" id="jt-next">次の月</button><button class="nb" id="jt-today">今月</button>
@@ -454,6 +468,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <form id="j-tf"><input id="jt-name" required maxlength="20" list="j-names" placeholder="担当者名を入力"><input id="jt-m" type="number" min="0" step="1" required placeholder="MNP月間目標"><input id="jt-n" type="number" min="0" step="1" required placeholder="新規（通常）月間目標"><button class="btn" type="submit">目標を保存</button></form>
 <p class="note">表示中の月に対する目標です。同じ担当者・同じ月で保存すると上書きされます。ここで設定した目標を、実績管理ページで各担当者が確認します。</p>
 </div>
+</section>
+<section class="adm-page" id="adm-ashift" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
 <p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP・新規（通常）の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">代理店</h3>
@@ -494,21 +510,31 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tw"><table id="as-adm-table" class="asv"></table></div>
 <p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。各行の「一括」ボタンを押すと、その役割の期間全体（開始日〜終了日）に同じ担当者をまとめて設定できます。「（空欄にする）」を選んで保存すると削除されます。</p>
 </div>
+</section>
+<section class="adm-page" id="adm-memo" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>管理者メモ</h2>
 <p>管理者だけが読み書きできます。他のメンバーには表示されません。</p>
 <textarea id="a-memo" aria-label="管理者メモ"></textarea>
 <div class="row" style="margin-top:8px"><button class="btn" id="a-save">メモを保存</button></div>
 <div class="msg" id="a-msg" role="status"></div></div>
+</section>
+<section class="adm-page" id="adm-cleanup" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>データの整理</h2>
 <p>削除したデータは元に戻せません。</p>
 <div class="row"><input type="month" id="a-mon" aria-label="削除する月"><button class="danger" id="a-delrec">この月の実績記録を削除</button></div>
 <div class="row" style="margin-top:10px"><button class="danger" id="a-delshift">すべての代理店シフトを削除</button></div></div>
+</section>
+<section class="adm-page" id="adm-export" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>データの書き出し</h2>
 <p>Excelなどで開けるCSV形式で書き出します。</p>
 <div class="row"><button class="btn" id="a-csv-report">実績をCSVで書き出す</button><button class="btn" id="a-csv-target">月間目標をCSVで書き出す</button><button class="btn" id="a-csv-shift">代理店シフトをCSVで書き出す</button></div>
 <div class="msg" id="a-csv-msg"></div></div>
+</section>
+<section class="adm-page" id="adm-password" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>パスワードの変更</h2>
 <div class="row"><input type="password" class="pw" id="a-npw" autocomplete="off" placeholder="新しいパスワード（8文字以上）" aria-label="新しいパスワード"><button class="btn" id="a-chg" style="border:0;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;background:var(--acc)">変更する</button></div></div>
+</section>
+<section class="adm-page" id="adm-access" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>アクセス権限（退職者など）</h2>
 <p class="note" style="margin-top:0">指定したメールアドレスのアカウントは、次回ログイン時からこのアプリを利用できなくなります（ログイン中の場合も、次の操作時にログアウトされます）。この機能はFirestoreの「admins」コレクションに登録されたアカウントのみ使えます（未登録の場合は保存時にエラーになります。ご自身のUIDは上の「パスワードを入力」画面に表示されています）。</p>
 <div id="blk-list"></div>
@@ -519,12 +545,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </form>
 <div class="msg" id="blk-msg" role="status" style="font-size:13px;margin-top:6px"></div>
 </div>
+</section>
+<section class="adm-page" id="adm-logs" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>アクセスログ</h2>
 <p class="note" style="margin-top:0">誰がいつこのアプリにアクセスしたかの記録です（同じ人の同じ日のアクセスはまとめて記録しています）。新しい順に直近200件を表示します。</p>
 <div class="tw"><table><thead><tr><th>日付</th><th>名前</th><th>メール</th><th>最終アクセス</th><th>回数</th><th></th></tr></thead><tbody id="log-rows"></tbody></table></div>
 <div id="log-empty" class="empty" hidden>記録がまだありません。</div>
 <div class="msg" id="log-msg" role="status" style="font-size:13px;margin-top:6px"></div>
 </div>
+</section>
+<section class="adm-page" id="adm-staff" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>スタッフ一覧（実績報告用）</h2>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">所属会社（委託スタッフ用）</h3>
 <div id="stfco-list" style="margin-bottom:10px"></div>
@@ -535,6 +565,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <p class="note" style="margin-top:4px">委託スタッフは所属会社を選んでください（登録されていない場合は上の欄で先に会社を登録してください）。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます。個人事業主の場合は「個人事業主」にチェックすると「（個）苗字」と表示されます（実績管理ではどちらもフルネームのまま表示されます）。</p>
 <p class="note">ここで登録した名前が実績報告・月間目標設定で使用されます。</p>
 </div>
+</section>
 </div>
 </section>
 <section id="notice" role="tabpanel" hidden>
@@ -1439,7 +1470,17 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("a-uid").textContent=fu?("ログイン中: "+fu.email+" ／ あなたのUID: "+fu.uid+"（管理者の書き込み権限が有効にならない場合は、このUIDをFirestoreのadminsコレクションに登録してください）"):"";
     }catch(e){}
   }
-  function unlock(){$("a-lock").hidden=true;$("a-body").hidden=false}
+  var ADM_PAGES=["adm-targets","adm-ashift","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-staff"];
+  function showAdmPage(id){
+    $("adm-menu").hidden=(id!=="menu");
+    ADM_PAGES.forEach(function(p){$(p).hidden=(p!==id)});
+    window.scrollTo(0,0);
+  }
+  $("a-body").addEventListener("click",function(ev){
+    var b=ev.target.closest("[data-adm]");
+    if(b)showAdmPage(b.dataset.adm);
+  });
+  function unlock(){$("a-lock").hidden=true;$("a-body").hidden=false;showAdmPage("menu")}
   authRef.onSnapshot(function(sn){auth=sn.exists?sn.data():{};if(!$("a-lock").hidden)lockUI()},function(){});
   lockUI();
   document.addEventListener("tabchange",function(e){if(e.detail!=="admin")lockUI()});
