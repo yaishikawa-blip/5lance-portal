@@ -323,7 +323,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 <div class="card" id="report-card" hidden><h2>実績を記録する</h2>
 <label style="display:block;margin-bottom:12px">担当者
-<select id="e-name" style="display:block;width:100%;max-width:280px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
+<div style="position:relative;max-width:280px">
+<input type="text" id="e-name-search" placeholder="名前を検索..." autocomplete="off" style="display:block;width:100%;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;box-sizing:border-box">
+<div id="e-name-list" style="position:absolute;left:0;right:0;top:100%;margin-top:-1px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 6px 6px;max-height:220px;overflow:auto;z-index:20;display:none"></div>
+</div>
+<select id="e-name" style="display:none"></select>
 </label>
 <div class="tapgrid" id="e-taps"></div>
 <div id="e-pending" style="margin-top:14px;font-weight:700"></div>
@@ -665,6 +669,8 @@ function render(){
   $("e-name").innerHTML=names.length?names.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>'}).join(""):'<option value="">スタッフが未登録です</option>';
   if(curSel&&names.indexOf(curSel)>-1)$("e-name").value=curSel;
   else{try{var saved=localStorage.getItem("jisseki-last-name");if(saved&&names.indexOf(saved)>-1)$("e-name").value=saved}catch(e){}}
+  $("e-name-search").placeholder=names.length?"名前を検索...":"スタッフが未登録です";
+  $("e-name-search").value=$("e-name").value||"";
   renderCounts();
 
   var elist=monthEvents.slice().sort(function(a,b){return b.ts-a.ts});
@@ -694,12 +700,43 @@ $("j-next").onclick=function(){cursor.setMonth(cursor.getMonth()+1);render()};
 $("j-today").onclick=function(){cursor=new Date();cursor.setDate(1);render()};
 function fail(){alert("保存できませんでした。編集権限があるか確認してください。")}
 
-$("e-name").onchange=function(){
+function onNameChange(){
   TYPES.forEach(function(t){pending[t.k]=0});
   updatePendingUI();
   try{localStorage.setItem("jisseki-last-name",$("e-name").value)}catch(e){}
   renderCounts();
+}
+$("e-name").onchange=onNameChange;
+function selectName(n){
+  $("e-name").value=n;
+  $("e-name-search").value=n||"";
+  $("e-name-list").style.display="none";
+  onNameChange();
+}
+function renderNameList(filter){
+  var f=(filter||"").trim();
+  var list=f?names.filter(function(n){return n.indexOf(f)>-1}):names;
+  $("e-name-list").innerHTML=list.length?list.map(function(n){
+    return '<div data-pick="'+esc(n)+'" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--line)">'+esc(n)+'</div>';
+  }).join(""):'<div class="note" style="padding:9px 10px;margin:0">該当するスタッフがいません</div>';
+}
+$("e-name-search").oninput=function(){
+  renderNameList(this.value);
+  $("e-name-list").style.display="block";
 };
+$("e-name-search").onfocus=function(){
+  renderNameList(this.value);
+  $("e-name-list").style.display="block";
+};
+$("e-name-list").onclick=function(ev){
+  var p=ev.target.closest("[data-pick]");if(!p)return;
+  selectName(p.dataset.pick);
+};
+document.addEventListener("click",function(ev){
+  if(ev.target.closest("#e-name-search")||ev.target.closest("#e-name-list"))return;
+  $("e-name-list").style.display="none";
+  $("e-name-search").value=$("e-name").value||"";
+});
 $("e-taps").onclick=function(ev){
   var b=ev.target.closest(".tapbtn"),m=ev.target.closest(".tapundo");
   if(b){pending[b.dataset.type]=(pending[b.dataset.type]||0)+1;updatePendingUI();return}
