@@ -425,9 +425,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <p class="note">表示中の月に対する目標です。同じ担当者・同じ月で保存すると上書きされます。ここで設定した目標を、実績管理ページで各担当者が確認します。</p>
 </div>
 <div class="card"><h2>スタッフ一覧（実績報告用）</h2>
+<h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">所属会社（委託スタッフ用）</h3>
+<div id="stfco-list" style="margin-bottom:10px"></div>
+<form id="stfco-f" style="display:flex;gap:8px;margin-bottom:20px"><input id="stfco-nm" required maxlength="20" placeholder="会社名を入力"><button class="btn" type="submit">会社を追加</button></form>
+<h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">スタッフ</h3>
 <div id="stf-list"></div>
-<form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><input id="stf-company" maxlength="20" placeholder="所属会社名（委託の場合のみ）" aria-label="所属会社名"><label style="font-size:13px;color:var(--sub);white-space:nowrap"><input type="checkbox" id="stf-individual"> 個人事業主</label><button class="btn" type="submit">追加</button></form>
-<p class="note" style="margin-top:4px">委託スタッフは所属会社名も入力してください。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます。個人事業主の場合は「個人事業主」にチェックすると「（個）苗字」と表示されます（実績管理ではどちらもフルネームのまま表示されます）。</p>
+<form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><select id="stf-company" aria-label="所属会社"><option value="">（会社なし）</option></select><label style="font-size:13px;color:var(--sub);white-space:nowrap"><input type="checkbox" id="stf-individual"> 個人事業主</label><button class="btn" type="submit">追加</button></form>
+<p class="note" style="margin-top:4px">委託スタッフは所属会社を選んでください（登録されていない場合は上の欄で先に会社を登録してください）。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます。個人事業主の場合は「個人事業主」にチェックすると「（個）苗字」と表示されます（実績管理ではどちらもフルネームのまま表示されます）。</p>
 <p class="note">ここで登録した名前が実績報告・月間目標設定で使用されます。</p>
 </div>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
@@ -983,16 +987,44 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
 
   (function(){
     function esc2(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-    var st2=[];
+    var st2=[],companies2=[];
     function stfTagHtml(s){
       if(s.individual)return ' <span style="display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin-left:4px">個人事業主</span>';
       if(s.company)return ' <span style="display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin-left:4px">'+esc2(s.company)+'</span>';
       return "";
     }
+    function companyOptionsHTML(cur){
+      var opts='<option value="">（会社なし）</option>';
+      var found=!cur;
+      companies2.forEach(function(c){
+        if(c.name===cur)found=true;
+        opts+='<option value="'+esc2(c.name)+'"'+(c.name===cur?" selected":"")+'>'+esc2(c.name)+'</option>';
+      });
+      if(cur&&!found)opts+='<option value="'+esc2(cur)+'" selected>'+esc2(cur)+'（未登録）</option>';
+      return opts;
+    }
+    function renderCo(){
+      $("stfco-list").innerHTML=companies2.length?companies2.map(function(c){
+        return '<div class="row2"><span style="flex:1">'+esc2(c.name)+'</span><button type="button" class="del" data-stfcodel="'+c.id+'">削除</button></div>';
+      }).join(""):'<p class="note">所属会社が登録されていません。</p>';
+      $("stf-company").innerHTML=companyOptionsHTML("");
+    }
+    $("stfco-list").onclick=function(ev){
+      var b=ev.target.closest("[data-stfcodel]");if(!b)return;
+      var c=companies2.filter(function(x){return x.id===b.dataset.stfcodel})[0];if(!c)return;
+      if(!confirm(c.name+"を削除しますか？（このスタッフの所属会社設定は残りますが、一覧からは選べなくなります）"))return;
+      db.doc("staffCompanies/"+c.id).delete().catch(function(){alert("削除できませんでした。")});
+    };
+    $("stfco-f").onsubmit=function(ev){
+      ev.preventDefault();
+      var n=$("stfco-nm").value.trim();if(!n)return;
+      db.collection("staffCompanies").add({name:n,order:Date.now()}).catch(function(){alert("追加できませんでした。")});
+      this.reset();
+    };
     function render2(){
       $("stf-list").innerHTML=st2.length?st2.map(function(s){
         return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(s.name)+stfTagHtml(s)+'</span>'
-         +'<input type="text" data-company="'+s.id+'" value="'+esc2(s.company||"")+'" placeholder="所属会社（委託の場合）" style="width:140px;margin-left:4px">'
+         +'<select data-company="'+s.id+'" style="width:160px;margin-left:4px">'+companyOptionsHTML(s.company)+'</select>'
          +'<label style="font-size:12px;color:var(--sub);margin-left:4px;white-space:nowrap"><input type="checkbox" data-individual="'+s.id+'"'+(s.individual?" checked":"")+'> 個人事業主</label>'
          +'<button type="button" class="del" data-savecompany="'+s.id+'">保存</button>'
          +'<button type="button" class="del" data-stfdel="'+s.id+'">削除</button></div>';
@@ -1009,7 +1041,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       var sv=ev.target.closest("[data-savecompany]");
       if(sv){
         var row=sv.closest(".row2");if(!row)return;
-        var co=row.querySelector('[data-company="'+sv.dataset.savecompany+'"]').value.trim();
+        var co=row.querySelector('[data-company="'+sv.dataset.savecompany+'"]').value;
         var ind=row.querySelector('[data-individual="'+sv.dataset.savecompany+'"]').checked;
         db.doc("staff/"+sv.dataset.savecompany).update({company:co,individual:ind}).catch(function(){alert("保存できませんでした。")});
       }
@@ -1017,11 +1049,12 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     $("stf-f").onsubmit=function(ev){
       ev.preventDefault();
       var n=$("stf-nm").value.trim();if(!n)return;
-      var co=$("stf-company").value.trim();
+      var co=$("stf-company").value;
       var ind=$("stf-individual").checked;
       db.collection("staff").add({name:n,company:co,individual:ind,order:Date.now()}).catch(function(){alert("追加できませんでした。")});
       this.reset();
     };
+    db.collection("staffCompanies").onSnapshot(function(snap){companies2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});renderCo();render2()},function(){});
     db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,company:v.company||"",individual:!!v.individual,order:v.order||0}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
     render2();
   })();
