@@ -509,6 +509,22 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="msg" id="a-csv-msg"></div></div>
 <div class="card"><h2>パスワードの変更</h2>
 <div class="row"><input type="password" class="pw" id="a-npw" autocomplete="off" placeholder="新しいパスワード（8文字以上）" aria-label="新しいパスワード"><button class="btn" id="a-chg" style="border:0;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;background:var(--acc)">変更する</button></div></div>
+<div class="card"><h2>アクセス権限（退職者など）</h2>
+<p class="note" style="margin-top:0">指定したメールアドレスのアカウントは、次回ログイン時からこのアプリを利用できなくなります（ログイン中の場合も、次の操作時にログアウトされます）。この機能はFirestoreの「admins」コレクションに登録されたアカウントのみ使えます（未登録の場合は保存時にエラーになります。ご自身のUIDは上の「パスワードを入力」画面に表示されています）。</p>
+<div id="blk-list"></div>
+<form id="blk-f" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+<input id="blk-email" type="email" required maxlength="100" placeholder="停止するメールアドレス" style="flex:1 1 220px">
+<input id="blk-name" maxlength="30" placeholder="氏名（任意・メモ用）" style="flex:1 1 140px">
+<button class="btn" type="submit">アクセスを停止する</button>
+</form>
+<div class="msg" id="blk-msg" role="status" style="font-size:13px;margin-top:6px"></div>
+</div>
+<div class="card"><h2>アクセスログ</h2>
+<p class="note" style="margin-top:0">誰がいつこのアプリにアクセスしたかの記録です（同じ人の同じ日のアクセスはまとめて記録しています）。新しい順に直近200件を表示します。</p>
+<div class="tw"><table><thead><tr><th>日付</th><th>名前</th><th>メール</th><th>最終アクセス</th><th>回数</th><th></th></tr></thead><tbody id="log-rows"></tbody></table></div>
+<div id="log-empty" class="empty" hidden>記録がまだありません。</div>
+<div class="msg" id="log-msg" role="status" style="font-size:13px;margin-top:6px"></div>
+</div>
 <div class="card"><h2>スタッフ一覧（実績報告用）</h2>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">所属会社（委託スタッフ用）</h3>
 <div id="stfco-list" style="margin-bottom:10px"></div>
@@ -1513,6 +1529,66 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     if(!confirm("すべての代理店シフト（代理店・店舗ブロック・割り当て）を削除しますか？"))return;
     Promise.all([delDocs(db,"ashiftBlocks"),delDocs(db,"ashiftAgencies")]).then(function(r){msg((r[0]+r[1])+"件のデータを削除しました。")},function(){msg("削除できませんでした。")});
   };
+
+  (function(){
+    function esc4(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+    function fmtDT(ts){
+      if(!ts)return"-";
+      var d=new Date(ts);
+      return (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+    }
+    var blocked=[];
+    function renderBlocked(){
+      $("blk-list").innerHTML=blocked.length?blocked.map(function(b){
+        return '<div class="row2"><span style="flex:1">'+esc4(b.email||b.id)+(b.name?'（'+esc4(b.name)+'）':'')+'</span><button type="button" class="del" data-unblk="'+esc4(b.id)+'">解除</button></div>';
+      }).join(""):'<p class="note">現在アクセスを停止しているアカウントはありません。</p>';
+    }
+    db.collection("blockedUsers").onSnapshot(function(sn){
+      blocked=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});
+      renderBlocked();
+    },function(){
+      $("blk-list").innerHTML='<p class="note">一覧を読み込めませんでした（Firestoreのadminsコレクションへの登録が必要です）。</p>';
+    });
+    $("blk-list").onclick=function(ev){
+      var b=ev.target.closest("[data-unblk]");if(!b)return;
+      if(!confirm("このアカウントのアクセス停止を解除しますか？"))return;
+      db.doc("blockedUsers/"+b.dataset.unblk).delete().catch(function(){alert("解除できませんでした（管理者登録が必要な場合があります）。")});
+    };
+    function blockEmail(email,name){
+      var key=String(email||"").trim().toLowerCase();if(!key)return;
+      db.doc("blockedUsers/"+key).set({email:key,name:(name||"").trim(),blockedAt:Date.now()}).then(function(){
+        $("blk-msg").style.color="var(--acc)";$("blk-msg").textContent=key+" のアクセスを停止しました。";
+        $("blk-f").reset();
+      }).catch(function(){
+        $("blk-msg").style.color="var(--bad)";$("blk-msg").textContent="停止できませんでした。ご自身のアカウントがFirestoreのadminsコレクションに登録されているか確認してください。";
+      });
+    }
+    $("blk-f").onsubmit=function(ev){
+      ev.preventDefault();
+      blockEmail($("blk-email").value,$("blk-name").value);
+    };
+
+    var logs=[];
+    function renderLogs(){
+      $("log-rows").innerHTML=logs.map(function(l){
+        return '<tr><td>'+esc4(l.date||"")+'</td><td>'+esc4(l.name||"（名前なし）")+'</td><td>'+esc4(l.email||"")+'</td><td>'+fmtDT(l.lastAt)+'</td><td>'+(l.count||1)+'</td><td><button type="button" class="del" data-blockfrom="'+esc4(l.email||"")+'" data-blockname="'+esc4(l.name||"")+'">停止</button></td></tr>';
+      }).join("");
+      $("log-empty").hidden=logs.length>0;
+    }
+    $("log-rows").onclick=function(ev){
+      var b=ev.target.closest("[data-blockfrom]");if(!b||!b.dataset.blockfrom)return;
+      if(!confirm(b.dataset.blockfrom+" のアクセスを停止しますか？"))return;
+      blockEmail(b.dataset.blockfrom,b.dataset.blockname);
+    };
+    db.collection("accessLogs").orderBy("lastAt","desc").limit(200).onSnapshot(function(sn){
+      logs=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});
+      renderLogs();
+      $("log-msg").textContent="";
+    },function(){
+      $("log-msg").style.color="var(--bad)";
+      $("log-msg").textContent="ログを読み込めませんでした（Firestoreのadminsコレクションへの登録が必要です）。";
+    });
+  })();
 }).catch(function(){});
 })();
 (function(){

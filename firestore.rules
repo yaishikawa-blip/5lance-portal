@@ -7,8 +7,15 @@ service cloud.firestore {
     }
     // 許可するメールドメインをここに列挙してください（firebase-config.js の
     // window.__ALLOWED_DOMAINS と同じ内容にしてください）。
+    // ブロック済み（退職者など）のメールアドレスは、Firestoreのレベルでも
+    // 一切のアクセスを拒否します（blockedUsers コレクションのドキュメントID
+    // は小文字化したメールアドレスです）。
+    function isBlocked() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/blockedUsers/$(request.auth.token.email.lower()));
+    }
     function isAllowedDomain() {
-      return isSignedIn() && emailDomain() in ['5lance.co.jp'];
+      return isSignedIn() && emailDomain() in ['5lance.co.jp'] && !isBlocked();
     }
     // 管理者は "admins" コレクションに自分のUID（Firebase AuthのUID）の
     // ドキュメントを1つ作成すると付与されます。Firebaseコンソールの
@@ -47,6 +54,23 @@ service cloud.firestore {
     match /ashiftAgencies/{id} { allow read, write: if isAllowedDomain(); }
     match /ashiftBlocks/{id} { allow read, write: if isAllowedDomain(); }
     match /admin/{id} { allow read, write: if isAllowedDomain(); }
+
+    // アクセス権限（退職者など）：書き込み・一覧の読み取りは本物の管理者
+    // （adminsコレクションに登録されたUID）のみ。各自は自分のメールアドレスの
+    // ドキュメントだけ読めるので、ログイン時に自分がブロックされているか確認できます。
+    match /blockedUsers/{email} {
+      allow get: if isSignedIn() && request.auth.token.email.lower() == email;
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // アクセスログ：誰でも自分のアクセス記録は作成・更新できますが、
+    // 読み取り（一覧の閲覧）は本物の管理者のみです。
+    match /accessLogs/{id} {
+      allow create, update: if isAllowedDomain() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+    }
 
     // その他の想定外のコレクションはデフォルトで拒否
     match /{document=**} {

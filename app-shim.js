@@ -62,25 +62,88 @@
           " では利用できません。許可されたドメイン（" +
           allowedDomains.join("、") +
           "）のGoogleアカウントでログインしてください。";
+    } else if (authState.status === "blocked") {
+      if (titleEl) titleEl.textContent = "アクセスが停止されています";
+      if (descEl)
+        descEl.textContent =
+          (deniedEmail || "このアカウント") +
+          " は管理者によって利用を停止されています。心当たりがない場合は管理者にお問い合わせください。";
     } else {
       if (titleEl) titleEl.textContent = "5LANCEポータル";
       if (descEl) descEl.textContent = "続けるにはGoogleアカウントでログインしてください。";
     }
   }
 
+  function logAccess(user) {
+    try {
+      var now = new Date();
+      var ymd =
+        now.getFullYear() +
+        "-" +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(now.getDate()).padStart(2, "0");
+      var ref = firestore.doc("accessLogs/" + ymd + "_" + user.uid);
+      ref
+        .get()
+        .then(function (snap) {
+          if (snap.exists) {
+            return ref.update({ lastAt: Date.now(), count: (snap.data().count || 0) + 1 });
+          }
+          return ref.set({
+            uid: user.uid,
+            email: user.email || "",
+            name: user.displayName || "",
+            date: ymd,
+            firstAt: Date.now(),
+            lastAt: Date.now(),
+            count: 1,
+          });
+        })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
   auth.onAuthStateChanged(function (user) {
     var firstTime = authState.status === "pending";
     if (!user) {
       authState = { status: "signedout", user: null };
-    } else if (!isAllowedEmail(user.email)) {
+      updateGateUI();
+      if (firstTime) settleReady();
+      return;
+    }
+    if (!isAllowedEmail(user.email)) {
       deniedEmail = user.email || "";
       authState = { status: "denied", user: null };
       auth.signOut().catch(function () {});
-    } else {
-      authState = { status: "ok", user: user };
+      updateGateUI();
+      if (firstTime) settleReady();
+      return;
     }
-    updateGateUI();
-    if (firstTime) settleReady();
+    var emailKey = String(user.email).toLowerCase();
+    firestore
+      .doc("blockedUsers/" + emailKey)
+      .get()
+      .then(function (snap) {
+        if (snap.exists) {
+          deniedEmail = user.email || "";
+          authState = { status: "blocked", user: null };
+          auth.signOut().catch(function () {});
+        } else {
+          authState = { status: "ok", user: user };
+          logAccess(user);
+        }
+      })
+      .catch(function () {
+        // 確認できない場合は、安全側ではなく通常どおりログインさせる
+        // （ネットワーク等の一時的な問題で全員がロックアウトされないように）
+        authState = { status: "ok", user: user };
+        logAccess(user);
+      })
+      .then(function () {
+        updateGateUI();
+        if (firstTime) settleReady();
+      });
   });
 
   document.addEventListener("DOMContentLoaded", function () {
