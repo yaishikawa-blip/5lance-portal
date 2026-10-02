@@ -41,6 +41,7 @@ service cloud.firestore {
     // これにより、ya.ishikawaさん以外の社員でもパスワードさえ知っていれば
     // スタッフ・シフト・お知らせの登録ができます）。
     match /staff/{id} { allow read, write: if isAllowedDomain(); }
+    match /staffCompanies/{id} { allow read, write: if isAllowedDomain(); }
     match /targets/{id} { allow read, write: if isAllowedDomain(); }
     match /notices/{id} { allow read, write: if isAllowedDomain(); }
     match /ashiftAgencies/{id} { allow read, write: if isAllowedDomain(); }
