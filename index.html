@@ -472,6 +472,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
 <p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP・新規（通常）の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">代理店</h3>
+<p class="note" style="margin-top:0">↑↓でシフト表（代理店ごとの表示順）を並べ替えられます。</p>
 <div id="as-ag-list" style="margin-bottom:10px"></div>
 <form id="as-ag-f" style="display:flex;gap:8px;margin-bottom:20px"><input id="as-ag-nm" required maxlength="20" placeholder="代理店名を入力"><button class="btn" type="submit">代理店を追加</button></form>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">店舗（現場）ブロック</h3>
@@ -1303,8 +1304,11 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return [1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(cur)===String(n)?" selected":"")+'>'+WEEK_LABEL[n]+'</option>'}).join("");
     }
     function renderLists(){
-      $("as-ag-list").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){
-        return '<div class="row2"><span style="flex:1">'+esc2(a.name)+'</span><button type="button" class="del" data-agdel="'+a.id+'">削除</button></div>';
+      $("as-ag-list").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a,i,arr){
+        return '<div class="row2"><span style="flex:1">'+esc2(a.name)+'</span>'
+         +'<button type="button" class="del" data-agup="'+a.id+'"'+(i===0?" disabled":"")+' aria-label="上へ" style="padding:3px 8px">↑</button>'
+         +'<button type="button" class="del" data-agdown="'+a.id+'"'+(i===arr.length-1?" disabled":"")+' aria-label="下へ" style="padding:3px 8px">↓</button>'
+         +'<button type="button" class="del" data-agdel="'+a.id+'">削除</button></div>';
       }).join(""):'<p class="note">代理店が登録されていません。</p>';
       $("as-bl-ag").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){return '<option value="'+esc2(a.name)+'">'+esc2(a.name)+'</option>'}).join(""):'<option value="">先に代理店を追加してください</option>';
       $("as-bl-list").innerHTML=blocks.length?blocks.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(b){
@@ -1411,9 +1415,22 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       db.collection("ashiftAgencies").add({name:n,order:Date.now()}).catch(fail2);
       this.reset();
     };
+    function swapAgencyOrder(id,dir){
+      var sorted=agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)});
+      var i=sorted.findIndex(function(x){return x.id===id});
+      var j=i+dir;
+      if(i<0||j<0||j>=sorted.length)return;
+      var a=sorted[i],bb=sorted[j];
+      var oa=a.order||0,ob=bb.order||0;
+      db.doc("ashiftAgencies/"+a.id).update({order:ob}).catch(fail2);
+      db.doc("ashiftAgencies/"+bb.id).update({order:oa}).catch(fail2);
+    }
     $("as-ag-list").onclick=function(ev){
-      var b=ev.target.closest("[data-agdel]");if(!b)return;
-      var a=agencies.filter(function(x){return x.id===b.dataset.agdel})[0];if(!a)return;
+      var up=ev.target.closest("[data-agup]"),down=ev.target.closest("[data-agdown]"),del=ev.target.closest("[data-agdel]");
+      if(up){swapAgencyOrder(up.dataset.agup,-1);return}
+      if(down){swapAgencyOrder(down.dataset.agdown,1);return}
+      if(!del)return;
+      var a=agencies.filter(function(x){return x.id===del.dataset.agdel})[0];if(!a)return;
       if(!confirm(a.name+"を削除しますか？この代理店に属する店舗ブロックも削除されます。"))return;
       db.doc("ashiftAgencies/"+a.id).delete().catch(fail2);
       blocks.filter(function(x){return x.agency===a.name}).forEach(function(x){db.doc("ashiftBlocks/"+x.id).delete().catch(function(){})});
