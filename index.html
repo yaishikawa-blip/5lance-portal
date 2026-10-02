@@ -40,6 +40,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki th,#jisseki td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 #jisseki th{color:var(--sub);font-weight:500;font-size:13px}
 #jisseki th:first-child,#jisseki td:first-child{text-align:left}
+#jisseki tbody tr:nth-child(even){background:var(--bg)}
+#jisseki tbody tr:hover{background:var(--accbg)}
+#jisseki th:first-child,#jisseki td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+#jisseki tbody tr:nth-child(even) td:first-child{background:var(--bg)}
+#jisseki tbody tr:hover td:first-child{background:var(--accbg)}
+#jisseki tfoot td:first-child{background:var(--panel)}
+#jisseki td.sub{color:var(--sub);font-size:12px;font-weight:400}
+#jisseki th.sub{color:var(--sub);font-size:11px;font-weight:400}
+#jisseki .nametag{display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin:2px 3px 2px 0;white-space:nowrap}
 #jisseki .bar{width:150px;height:10px;background:var(--track);border-radius:5px;overflow:hidden;display:inline-block;vertical-align:middle}
 #jisseki .bar i{display:block;height:100%;background:var(--acc)}
 #jisseki .bar i.mid{background:var(--warn)}.bar i.low{background:var(--bad)}
@@ -576,7 +585,7 @@ var cursor=new Date();cursor.setDate(1);
 
 function selectedName(){return $("e-name").value}
 
-$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規</th>'+PLAIN.map(function(t){return '<th>'+esc(t.l)+'</th>'}).join("")+'<th>総合達成率</th>';
+$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th>総合達成率</th>';
 $("e-taps").innerHTML=TYPES.map(function(t,i){
   return '<div class="tapcard"><button class="tapbtn'+(t.target?" target":"")+'" data-type="'+t.k+'">'+esc(t.l)+'<span class="tapcount" data-pending="'+t.k+'">0</span></button>'
    +'<div class="taprow2"><button class="tapundo" data-minus="'+t.k+'">−1</button><span class="tapmonth" data-month="'+t.k+'">今月 0件</span></div></div>';
@@ -614,10 +623,10 @@ function render(){
     return '<tr><td>'+esc(n)+'</td>'
      +'<td>'+prog(a.mnp,t.mnpTarget)+'</td>'
      +'<td>'+prog(a.new,t.newTarget)+'</td>'
-     +PLAIN.map(function(pt){return '<td>'+yen(N(a[pt.k]))+'</td>'}).join("")
+     +PLAIN.map(function(pt){return '<td class="sub">'+yen(N(a[pt.k]))+'</td>'}).join("")
      +'<td><span class="rate '+c+'">'+p+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(p,100)+'%"></i></span></td></tr>'}).join("");
   $("j-aggfoot").innerHTML=list.length?'<tr><td>合計</td><td>'+yen(sum.m)+' / '+yen(sum.mt)+'</td><td>'+yen(sum.n)+' / '+yen(sum.nt)+'</td>'
-   +PLAIN.map(function(pt){return '<td>'+yen(psum[pt.k])+'</td>'}).join("")+'<td><b>'+rate+'%</b></td></tr>':"";
+   +PLAIN.map(function(pt){return '<td class="sub">'+yen(psum[pt.k])+'</td>'}).join("")+'<td><b>'+rate+'%</b></td></tr>':"";
   $("j-empty").hidden=list.length>0;
 
   var seen={},o="";names.concat(events.map(function(e){return e.name})).concat(targets.map(function(t){return t.name})).forEach(function(x){if(x&&!seen[x]){seen[x]=1;o+='<option value="'+esc(x)+'">'}});
@@ -737,7 +746,8 @@ function rowFor(b){
     if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
   });
   var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
-  return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td>'+esc(staffArr.join("、")||"未設定")+'</td>'
+  var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
+  return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td style="white-space:normal">'+staffHtml+'</td>'
    +'<td>'+prog(mnp,mt)+'</td><td>'+prog(neu,nt)+'</td>'
    +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
 }
