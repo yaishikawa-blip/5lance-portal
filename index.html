@@ -426,7 +426,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 <div class="card"><h2>スタッフ一覧（実績報告用）</h2>
 <div id="stf-list"></div>
-<form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><button class="btn" type="submit">追加</button></form>
+<form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><input id="stf-company" maxlength="20" placeholder="所属会社名（委託の場合のみ）" aria-label="所属会社名"><button class="btn" type="submit">追加</button></form>
+<p class="note" style="margin-top:4px">委託スタッフは所属会社名も入力してください。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます（実績管理ではフルネームのまま表示されます）。</p>
 <p class="note">ここで登録した名前が実績報告・月間目標設定で使用されます。</p>
 </div>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
@@ -850,6 +851,10 @@ function weekDateList(vb){
 }
 function inRange(b,ds){return ds>=b.start&&ds<=b.end}
 function isChanged(b,kind,dstr){return !!(b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr])}
+function plainName(v){var m=/^\(([^)]*)\)\s*(.*)$/.exec(v||"");return (m?m[2]:String(v||"")).trim()}
+var staffCompanyMap={};
+function familyName(n){n=String(n||"");var sp=n.split(/[\s　]+/);if(sp.length>1)return sp[0];return n.length>2?n.slice(0,2):n}
+function formatShiftName(n){var co=staffCompanyMap[n];if(!co)return n;return "("+co.slice(0,2)+")"+familyName(n)}
 function siteRowCells(b,ds,kind){
   var out="",i=0;
   while(i<ds.length){
@@ -861,7 +866,8 @@ function siteRowCells(b,ds,kind){
       i+=span;
     }else{
       var val=(b.cells&&b.cells[kind]&&b.cells[kind][dstr])||"";
-      out+='<td class="cell'+(isChanged(b,kind,dstr)?" changed":"")+'">'+esc(val)+"</td>";
+      var disp=val?formatShiftName(plainName(val)):"";
+      out+='<td class="cell'+(isChanged(b,kind,dstr)?" changed":"")+'">'+esc(disp)+"</td>";
       i++;
     }
   }
@@ -917,6 +923,7 @@ claude.use("db").then(function(d){
   if(!d)return;
   d.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
   d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.company)staffCompanyMap[v.name]=v.company});render()},function(){});
 }).catch(function(){});
 })();
 
@@ -979,22 +986,35 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     var st2=[];
     function render2(){
       $("stf-list").innerHTML=st2.length?st2.map(function(s){
-        return '<div class="row2"><span style="flex:1">'+esc2(s.name)+'</span><button type="button" class="del" data-stfdel="'+s.id+'">削除</button></div>';
+        return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(s.name)+(s.company?' <span style="display:inline-block;background:var(--accbg);color:var(--acc);border-radius:10px;padding:2px 9px;font-size:12px;font-weight:500;margin-left:4px">'+esc2(s.company)+'</span>':"")+'</span>'
+         +'<input type="text" data-company="'+s.id+'" value="'+esc2(s.company||"")+'" placeholder="所属会社（委託の場合）" style="width:140px;margin-left:4px">'
+         +'<button type="button" class="del" data-savecompany="'+s.id+'">保存</button>'
+         +'<button type="button" class="del" data-stfdel="'+s.id+'">削除</button></div>';
       }).join(""):'<p class="note">スタッフが登録されていません。</p>';
     }
     $("stf-list").onclick=function(ev){
-      var b=ev.target.closest("[data-stfdel]");if(!b)return;
-      var s=st2.filter(function(x){return x.id===b.dataset.stfdel})[0];if(!s)return;
-      if(!confirm(s.name+"さんを削除しますか？"))return;
-      db.doc("staff/"+s.id).delete().catch(function(){alert("削除できませんでした。")});
+      var d=ev.target.closest("[data-stfdel]");
+      if(d){
+        var s=st2.filter(function(x){return x.id===d.dataset.stfdel})[0];if(!s)return;
+        if(!confirm(s.name+"さんを削除しますか？"))return;
+        db.doc("staff/"+s.id).delete().catch(function(){alert("削除できませんでした。")});
+        return;
+      }
+      var sv=ev.target.closest("[data-savecompany]");
+      if(sv){
+        var row=sv.closest(".row2");if(!row)return;
+        var co=row.querySelector('[data-company="'+sv.dataset.savecompany+'"]').value.trim();
+        db.doc("staff/"+sv.dataset.savecompany).update({company:co}).catch(function(){alert("保存できませんでした。")});
+      }
     };
     $("stf-f").onsubmit=function(ev){
       ev.preventDefault();
       var n=$("stf-nm").value.trim();if(!n)return;
-      db.collection("staff").add({name:n,order:Date.now()}).catch(function(){alert("追加できませんでした。")});
+      var co=$("stf-company").value.trim();
+      db.collection("staff").add({name:n,company:co,order:Date.now()}).catch(function(){alert("追加できませんでした。")});
       this.reset();
     };
-    db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
+    db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,company:v.company||"",order:v.order||0}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
     render2();
   })();
 
@@ -1025,6 +1045,9 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     }
     function inRange(b,ds){return ds>=b.start&&ds<=b.end}
     function isChanged(b,kind,dstr){return !!(b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr])}
+    var staffCompanyMap={};
+    function familyName(n){n=String(n||"");var sp=n.split(/[\s　]+/);if(sp.length>1)return sp[0];return n.length>2?n.slice(0,2):n}
+    function formatShiftName(n){var co=staffCompanyMap[n];if(!co)return n;return "("+co.slice(0,2)+")"+familyName(n)}
     function siteRowCells(b,ds,kind){
       var out="",i=0;
       while(i<ds.length){
@@ -1036,7 +1059,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
           i+=span;
         }else{
           var val=(b.cells&&b.cells[kind]&&b.cells[kind][dstr])||"";
-          out+='<td class="cell'+(isChanged(b,kind,dstr)?" changed":"")+'"><button type="button" data-block="'+b.id+'" data-role="'+kind+'" data-date="'+dstr+'">'+esc2(val)+"</button></td>";
+          var disp=val?formatShiftName(plainName(val)):"";
+          out+='<td class="cell'+(isChanged(b,kind,dstr)?" changed":"")+'"><button type="button" data-block="'+b.id+'" data-role="'+kind+'" data-date="'+dstr+'">'+esc2(disp)+"</button></td>";
           i++;
         }
       }
@@ -1245,6 +1269,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     };
     db.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
     db.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
+    db.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.company)staffCompanyMap[v.name]=v.company});renderTable()},function(){});
     renderLists();renderTable();
   })();
 
