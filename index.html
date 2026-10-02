@@ -179,6 +179,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .asv td.cell.changed{background:var(--l)}
 .asv td.cell.changed button{background:var(--l)}
 .asv td.corner{background:var(--panel)}
+.asv thead th{position:sticky;top:0;z-index:2;box-shadow:0 2px 4px -2px rgba(0,0,0,.2)}
+.asv td.ag{position:sticky;left:0;z-index:1;box-shadow:2px 0 4px -2px rgba(0,0,0,.2)}
+.asv thead th:first-child{left:0;z-index:3}
 #admin .asgrid .row2{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
 #admin .asgrid .row2:last-child{border-bottom:0}
 #admin .asgrid .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink)}
