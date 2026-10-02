@@ -190,6 +190,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .agrow{cursor:grab;touch-action:pan-y;user-select:none;background:var(--panel)}
 .agrow.dragging{opacity:.85;box-shadow:0 6px 14px rgba(0,0,0,.25);position:relative;z-index:5;cursor:grabbing;background:var(--bg)}
 .draghandle{color:var(--sub);font-size:17px;line-height:1;margin-right:2px}
+.do-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.do-cal .dow{text-align:center;font-size:12px;color:var(--sub);font-weight:700;padding:2px 0 6px}
+.do-cal .dow.sat{color:var(--sat)}
+.do-cal .dow.sun{color:var(--sun)}
+.do-cal .day{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14px;background:var(--panel);user-select:none}
+.do-cal .day.sat{color:var(--sat)}
+.do-cal .day.sun{color:var(--sun)}
+.do-cal .day.selected{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
+.do-cal .day.pad{visibility:hidden;cursor:default}
 #stfco-list .row2{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
 #stfco-list .row2:last-child{border-bottom:0}
 #stf-list .del,#stfco-list .del{background:none;border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;color:var(--ink);font-size:12px}
@@ -425,7 +434,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
   <div class="tw" id="as-tablewrap"><table id="as-table" class="asv"></table></div>
   <p class="note">シフトの登録・変更は管理者専用ページで行います。</p>
-  <div class="card" style="margin-top:20px"><h2>スタッフ別 稼働日数（月間）</h2>
+  <button type="button" class="btn" data-p="dayoff" style="margin:16px 0">🙋 希望休を提出する</button>
+  <div class="card" style="margin-top:0"><h2>スタッフ別 稼働日数（月間）</h2>
   <div class="nav">
     <button class="nb" id="as-mon-prev">前の月</button><span id="as-mon-range"></span><button class="nb" id="as-mon-next">次の月</button><button class="nb" id="as-mon-today">今月</button>
   </div>
@@ -433,6 +443,29 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <div id="as-mon-empty" class="empty" hidden>この月の稼働記録はまだありません。</div>
   <p class="note">現場のシフト表に入力されている日数を、同じ人が1日に複数の現場・役割に入っていても1日分として数えています。</p>
   </div>
+</section>
+<section id="dayoff" role="tabpanel" hidden>
+<button class="back" data-p="shift">シフト管理へ戻る</button>
+<h1 style="font-size:22px;margin:0 0 14px">希望休提出</h1>
+<div id="do-closed" class="card" hidden><p style="margin:0;color:var(--bad);font-weight:700">今月の希望休の提出期間は終了しました（提出期限：毎月10日まで）。来月分は来月の提出期間にご提出ください。</p></div>
+<div id="do-body">
+<div class="card">
+<label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px">スタッフ名
+<div style="position:relative">
+<input id="do-name-search" placeholder="名前を検索..." autocomplete="off" aria-label="スタッフ名">
+<div id="do-name-list" style="position:absolute;left:0;right:0;top:100%;margin-top:-1px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 6px 6px;max-height:220px;overflow:auto;z-index:20;display:none"></div>
+</div>
+</label>
+<p class="note" id="do-target" style="margin:8px 0 0"></p>
+</div>
+<div class="card" id="do-calcard" hidden>
+<h2 id="do-cal-title" style="margin:0 0 8px"></h2>
+<p class="note" style="margin-top:0">休みを希望する日をタップして選択してください（複数選択できます。もう一度タップすると解除されます）。</p>
+<div id="do-cal" class="do-cal"></div>
+<div class="row" style="margin-top:14px"><button class="btn" id="do-submit">この内容で提出する</button></div>
+<div class="msg" id="do-msg" role="status" style="margin-top:8px;font-size:13px"></div>
+</div>
+</div>
 </section>
 <section id="admin" role="tabpanel" hidden>
 <button class="back" data-p="home">トップへ戻る</button>
@@ -1097,6 +1130,115 @@ claude.use("db").then(function(d){
 
 (function(){
 function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+var WD=["日","月","火","水","木","金","土"];
+var names=[],reqs=[],db=null,selectedDates={},curName="";
+function nameHash(n){var h="";for(var i=0;i<n.length;i++)h+=n.charCodeAt(i).toString(16)+"x";return h}
+function targetMonthDate(){var d=new Date();return new Date(d.getFullYear(),d.getMonth()+1,1)}
+function monthKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function isSubmitOpen(){return new Date().getDate()<=10}
+function fmtD2(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function renderCalendar(){
+  var tgt=targetMonthDate(),mk=monthKey(tgt);
+  $("do-target").textContent="対象月："+tgt.getFullYear()+"年"+(tgt.getMonth()+1)+"月（提出期限：今月10日まで）";
+  $("do-cal-title").textContent=tgt.getFullYear()+"年"+(tgt.getMonth()+1)+"月の希望休";
+  var days=new Date(tgt.getFullYear(),tgt.getMonth()+1,0).getDate();
+  var firstDow=new Date(tgt.getFullYear(),tgt.getMonth(),1).getDay();
+  var html=WD.map(function(w,i){return '<div class="dow'+(i===0?" sun":i===6?" sat":"")+'">'+w+"</div>"}).join("");
+  for(var i=0;i<firstDow;i++)html+='<div class="day pad"></div>';
+  for(var d=1;d<=days;d++){
+    var dt=new Date(tgt.getFullYear(),tgt.getMonth(),d);
+    var dstr=fmtD2(dt),dow=dt.getDay();
+    html+='<div class="day'+(dow===0?" sun":dow===6?" sat":"")+(selectedDates[dstr]?" selected":"")+'" data-date="'+dstr+'">'+d+"</div>";
+  }
+  $("do-cal").innerHTML=html;
+}
+function loadExisting(){
+  selectedDates={};
+  if(curName){
+    var mk=monthKey(targetMonthDate());
+    var r=reqs.filter(function(x){return x.name===curName&&x.month===mk})[0];
+    if(r&&r.dates)r.dates.forEach(function(ds){selectedDates[ds]=true});
+  }
+  renderCalendar();
+}
+function selectName(n){
+  curName=n;
+  $("do-name-search").value=n||"";
+  $("do-name-list").style.display="none";
+  $("do-calcard").hidden=!n;
+  $("do-msg").textContent="";
+  try{localStorage.setItem("dayoff-last-name",n)}catch(e){}
+  loadExisting();
+}
+function renderNameList(filter){
+  var f=(filter||"").trim();
+  var list=f?names.filter(function(n){return n.indexOf(f)>-1}):names;
+  $("do-name-list").innerHTML=list.length?list.map(function(n){
+    return '<div data-pick="'+esc(n)+'" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--line)">'+esc(n)+'</div>';
+  }).join(""):'<div class="note" style="padding:9px 10px;margin:0">該当するスタッフがいません</div>';
+}
+$("do-name-search").oninput=function(){
+  renderNameList(this.value);
+  $("do-name-list").style.display="block";
+};
+$("do-name-search").onfocus=function(){
+  renderNameList(this.value);
+  $("do-name-list").style.display="block";
+};
+$("do-name-list").onclick=function(ev){
+  var p=ev.target.closest("[data-pick]");if(!p)return;
+  selectName(p.dataset.pick);
+};
+document.addEventListener("click",function(ev){
+  if(ev.target.closest("#do-name-search")||ev.target.closest("#do-name-list"))return;
+  $("do-name-list").style.display="none";
+});
+$("do-cal").onclick=function(ev){
+  if(!isSubmitOpen())return;
+  var d=ev.target.closest("[data-date]");if(!d)return;
+  var ds=d.dataset.date;
+  if(selectedDates[ds])delete selectedDates[ds];else selectedDates[ds]=true;
+  d.classList.toggle("selected");
+};
+$("do-submit").onclick=function(){
+  if(!isSubmitOpen()){$("do-msg").style.color="var(--bad)";$("do-msg").textContent="提出期限（毎月10日）を過ぎているため提出できません。";return}
+  if(!curName){$("do-msg").style.color="var(--bad)";$("do-msg").textContent="先にスタッフ名を選んでください。";return}
+  if(!db){$("do-msg").style.color="var(--bad)";$("do-msg").textContent="読み込み中です。少し待ってから押してください。";return}
+  var mk=monthKey(targetMonthDate());
+  var dates=Object.keys(selectedDates).sort();
+  $("do-submit").disabled=true;$("do-msg").style.color="";$("do-msg").textContent="提出しています…";
+  db.doc("dayoffRequests/"+mk+"_"+nameHash(curName)).set({name:curName,month:mk,dates:dates,updatedAt:Date.now()}).then(function(){
+    $("do-submit").disabled=false;$("do-msg").style.color="var(--ok,#2a8)";$("do-msg").textContent="提出しました（"+dates.length+"日選択）。";
+  },function(){
+    $("do-submit").disabled=false;$("do-msg").style.color="var(--bad)";$("do-msg").textContent="提出できませんでした。もう一度お試しください。";
+  });
+};
+document.addEventListener("tabchange",function(ev){
+  if(ev.detail!=="dayoff")return;
+  $("do-closed").hidden=isSubmitOpen();
+  $("do-body").hidden=!isSubmitOpen();
+  if(isSubmitOpen())renderCalendar();
+});
+claude.use("db").then(function(d){
+  if(!d)return;
+  db=d;
+  d.collection("staff").onSnapshot(function(sn){
+    names=sn.docs.map(function(x){return x.data().name}).filter(Boolean).sort();
+    if(!curName){
+      var saved="";try{saved=localStorage.getItem("dayoff-last-name")||""}catch(e){}
+      if(saved&&names.indexOf(saved)>-1)selectName(saved);
+    }
+  },function(){});
+  d.collection("dayoffRequests").onSnapshot(function(sn){
+    reqs=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});
+    loadExisting();
+  },function(){});
+}).catch(function(){});
+})();
+
+(function(){
+function $(i){return document.getElementById(i)}
 function yen(n){return Number(n).toLocaleString("ja-JP")}
 function wkOf(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-(x.getDay()+6)%7);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")}
 var now=new Date(),wk0=wkOf(now);
@@ -1717,7 +1859,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
 }).catch(function(){});
 })();
 (function(){
-var P=["home","jisseki","shift","notice","admin"];
+var P=["home","jisseki","shift","dayoff","notice","admin"];
 function show(p){
   if(p==="admin"&&document.getElementById("t-admin").hidden)p="home";
   P.forEach(function(x){document.getElementById(x).hidden=(x!==p)});
