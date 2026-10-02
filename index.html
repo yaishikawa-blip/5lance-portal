@@ -404,10 +404,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <header>
     <h1>シフト管理</h1>
     <div class="nav">
-      <button class="nb" id="as-prev">前の月</button><span id="as-range"></span><button class="nb" id="as-next">次の月</button><button class="nb" id="as-today">今月</button>
+      <select id="as-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+        <option value="1">1週目</option>
+        <option value="2">2週目</option>
+        <option value="3">3週目</option>
+        <option value="4">4週目</option>
+        <option value="5">5週目</option>
+      </select>
+      <span id="as-range"></span>
     </div>
   </header>
-  <div id="as-quick" style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px"></div>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
   <div class="tw"><table id="as-table" class="asv"></table></div>
   <p class="note">シフトの登録・変更は管理者専用ページで行います。</p>
@@ -935,42 +941,30 @@ claude.use("db").then(function(d){
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 var WD=["日","月","火","水","木","金","土"];
+var DAYS=14;
 var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"],["c6","クローザー"],["c7","クローザー"],["c8","クローザー"],["c9","クローザー"]];
 var agencies=[],blocks=[];
-var shiftCursor=new Date();shiftCursor.setDate(1);shiftCursor.setHours(0,0,0,0);
+var winStart=new Date();winStart.setHours(0,0,0,0);
 function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
-function monthDays(d){var y=d.getFullYear(),m=d.getMonth(),days=new Date(y,m+1,0).getDate(),a=[];for(var i=1;i<=days;i++)a.push(new Date(y,m,i));return a}
+function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));return a}
+function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
+function weekFilter(){return $("as-week").value}
+function visibleBlocks(){var wk=weekFilter();return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks}
+function weekDateList(vb){
+  var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
+  var e=vb.reduce(function(a,b){return !a||b.end>a?b.end:a},null);
+  if(!s||!e)return[];
+  var a=[],cur=parseD(s),end=parseD(e);
+  while(cur<=end){a.push(new Date(cur));cur=addD(cur,1)}
+  return a;
+}
 function inRange(b,ds){return ds>=b.start&&ds<=b.end}
 function isChanged(b,kind,dstr){return !!(b.cellMeta&&b.cellMeta[kind]&&b.cellMeta[kind][dstr])}
 function plainName(v){var m=/^\(([^)]*)\)\s*(.*)$/.exec(v||"");return (m?m[2]:String(v||"")).trim()}
 var staffCompanyMap={};
 function familyName(n){n=String(n||"");var sp=n.split(/[\s　]+/);if(sp.length>1)return sp[0];return n.length>2?n.slice(0,2):n}
 function formatShiftName(n){var co=staffCompanyMap[n];if(!co)return n;return "("+co.slice(0,2)+")"+familyName(n)}
-function mergeBlocksByStore(vb){
-  var map={},order=[];
-  vb.forEach(function(b){
-    var key=(b.agency||"")+"｜"+b.name;
-    if(!map[key]){
-      map[key]={agency:b.agency,name:b.name,order:b.order,start:b.start,end:b.end,slots:b.slots,cells:{},cellMeta:{}};
-      order.push(key);
-    }
-    var m=map[key];
-    if(b.start<m.start)m.start=b.start;
-    if(b.end>m.end)m.end=b.end;
-    if((Number(b.slots)||0)>(Number(m.slots)||0))m.slots=b.slots;
-    if((b.order||0)<(m.order||0))m.order=b.order;
-    Object.keys(b.cells||{}).forEach(function(role){
-      m.cells[role]=m.cells[role]||{};
-      Object.keys(b.cells[role]).forEach(function(dk){m.cells[role][dk]=b.cells[role][dk]});
-    });
-    Object.keys(b.cellMeta||{}).forEach(function(role){
-      m.cellMeta[role]=m.cellMeta[role]||{};
-      Object.keys(b.cellMeta[role]).forEach(function(dk){m.cellMeta[role][dk]=b.cellMeta[role][dk]});
-    });
-  });
-  return order.map(function(k){return map[k]});
-}
 function siteRowCells(b,ds,kind){
   var out="",i=0;
   while(i<ds.length){
@@ -1005,7 +999,7 @@ function buildTable(ds,vb){
   var body="";
   var aList=agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)});
   aList.forEach(function(ag){
-    var abs=mergeBlocksByStore(vb.filter(function(b){return b.agency===ag.name})).sort(function(a,b){return (a.order||0)-(b.order||0)});
+    var abs=vb.filter(function(b){return b.agency===ag.name}).sort(function(a,b){return (a.order||0)-(b.order||0)});
     if(!abs.length)return;
     var rowCount=abs.reduce(function(sum,b){return sum+1+effSlots(b)},0),first=true;
     abs.forEach(function(b){
@@ -1017,20 +1011,17 @@ function buildTable(ds,vb){
   });
   return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
 }
-function renderQuick(){
-  var html="";
-  for(var i=-2;i<=2;i++){
-    var d=new Date(shiftCursor.getFullYear(),shiftCursor.getMonth()+i,1);
-    html+='<button type="button" class="nb" data-mon="'+i+'"'+(i===0?' style="background:var(--acc);color:#fff;border-color:var(--acc)"':'')+'>'+d.getFullYear()+"年"+(d.getMonth()+1)+"月</button>";
-  }
-  $("as-quick").innerHTML=html;
-}
 function render(){
-  var ds=monthDays(shiftCursor);
-  $("as-range").textContent=shiftCursor.getFullYear()+"年"+(shiftCursor.getMonth()+1)+"月";
-  $("as-table").innerHTML=buildTable(ds,blocks);
-  $("as-empty").hidden=blocks.length>0;
-  renderQuick();
+  var wk=weekFilter(),vb=visibleBlocks();
+  var ds=weekDateList(vb);
+  if(!ds.length){
+    $("as-range").textContent=wk+"週目のブロックはまだありません";
+  }else{
+    var e=ds[ds.length-1];
+    $("as-range").textContent=wk+"週目　"+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
+  }
+  $("as-table").innerHTML=buildTable(ds,vb);
+  $("as-empty").hidden=vb.length>0;
   renderMonthly();
 }
 var monCursor=new Date();monCursor.setDate(1);
@@ -1061,14 +1052,7 @@ function renderMonthly(){
   }).join("");
   $("as-mon-empty").hidden=names.length>0;
 }
-$("as-prev").onclick=function(){shiftCursor.setMonth(shiftCursor.getMonth()-1);render()};
-$("as-next").onclick=function(){shiftCursor.setMonth(shiftCursor.getMonth()+1);render()};
-$("as-today").onclick=function(){shiftCursor=new Date();shiftCursor.setDate(1);shiftCursor.setHours(0,0,0,0);render()};
-$("as-quick").addEventListener("click",function(ev){
-  var b=ev.target.closest("[data-mon]");if(!b)return;
-  shiftCursor.setMonth(shiftCursor.getMonth()+Number(b.dataset.mon));
-  render();
-});
+$("as-week").onchange=render;
 $("as-mon-prev").onclick=function(){monCursor.setMonth(monCursor.getMonth()-1);renderMonthly()};
 $("as-mon-next").onclick=function(){monCursor.setMonth(monCursor.getMonth()+1);renderMonthly()};
 $("as-mon-today").onclick=function(){monCursor=new Date();monCursor.setDate(1);renderMonthly()};
