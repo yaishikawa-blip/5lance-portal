@@ -284,6 +284,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #home .ranksum .box b.ok{color:var(--acc)}
 #home .ranksum .box b.mid{color:var(--warn)}
 #home .ranksum .box b.low{color:var(--bad)}
+#home .ranksum .box .pace-sub{display:block;margin-top:4px;font-size:12px;color:var(--sub);font-weight:400}
+#home .ranksum .box .pace-sub.done{color:var(--acc);font-weight:700}
 #home ul{list-style:none;margin:0;padding:0}
 #home li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;justify-content:space-between}
 #home li:last-child{border-bottom:0}
@@ -477,6 +479,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <section id="home">
 <div class="card"><h2>最新のお知らせ</h2><ul id="h-list"><li class="empty2">お知らせはまだありません。</li></ul>
 <button class="more" data-p="notice">すべて見る</button> <button class="more" data-p="notice" data-open="1" hidden>お知らせを書き込む</button></div>
+<div class="card" id="pace-card" hidden><h2>⏱ 進行中イベントの目標ペース</h2>
+<p class="rank-sub">本日が期間に含まれる現場（シフトで設定された現場）の、目標までの残り件数と、達成に必要な1日あたりの件数です。</p>
+<div class="ranksum" id="pace-list"></div>
+</div>
 <div class="card" id="rank-card" hidden><h2>🏆 当週の現場実績ランキング</h2>
 <p class="rank-sub">本日が期間に含まれる現場（代理店シフト）を、MNP新規とゴールドの合計達成率で順位付けしています。</p>
 <b class="rank-h">TOP3</b><div class="ranksum" id="rank-top"></div>
@@ -1359,6 +1365,33 @@ function evMatchesBlock(ev,b,staffArr){
   var ds=ymd2(new Date(ev.ts));
   return ds>=b.start&&ds<=b.end;
 }
+function parseD2(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
+function renderPaceCard(){
+  var card=$("pace-card");
+  if(!card)return;
+  var todayStr=ymd2(new Date());
+  var todayD=parseD2(todayStr);
+  var active=blocks.filter(function(b){return b.start&&b.end&&b.start<=todayStr&&b.end>=todayStr});
+  if(!active.length){card.hidden=true;return}
+  $("pace-list").innerHTML=active.map(function(b){
+    var staffArr=blockStaff(b);
+    var mnp=0,neu=0,gld=0;
+    events.forEach(function(ev){
+      if(!evMatchesBlock(ev,b,staffArr))return;
+      if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;else if(ev.type==="gcreca")gld++;
+    });
+    var gt=N(b.mnpTarget)+N(b.newTarget)+N(b.goldTarget),g=mnp+neu+gld;
+    var label=(b.agency?b.agency+"／":"")+b.name;
+    var daysLeft=Math.max(1,Math.round((parseD2(b.end)-todayD)/86400000)+1);
+    if(gt<=0)return '<div class="box"><small>'+esc(label)+'</small><b class="mid">目標未設定</b></div>';
+    var remaining=Math.max(0,gt-g);
+    if(remaining<=0)return '<div class="box"><small>'+esc(label)+'</small><b class="ok">達成済み🎉</b><span class="pace-sub done">残り'+daysLeft+'日</span></div>';
+    var perDay=Math.ceil(remaining/daysLeft);
+    var c=cls(pct(g,gt));
+    return '<div class="box"><small>'+esc(label)+'</small><b class="'+c+'">残り'+remaining+'件</b><span class="pace-sub">1日'+perDay+'件ペースが必要（残り'+daysLeft+'日）</span></div>';
+  }).join("");
+  card.hidden=false;
+}
 var dbRef=null,userCanEdit=false,autoPosted={};
 function maybeAutoPostWeekly(){
   if(!dbRef||!userCanEdit||!blocks.length)return;
@@ -1581,11 +1614,12 @@ $("st-mon-next").onclick=function(){stCursor.setMonth(stCursor.getMonth()+1);ren
 $("st-mon-today").onclick=function(){stCursor=new Date();stCursor.setDate(1);render()};
 render();
 renderHomeRanking();
+renderPaceCard();
 claude.use("db").then(function(d){
   if(!d)return;dbRef=d;
-  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();maybeAutoPostWeekly()},function(){});
-  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();maybeAutoPostWeekly()},function(){});
-  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});render();renderHomeRanking()},function(){});
+  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();renderPaceCard();maybeAutoPostWeekly()},function(){});
+  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();renderPaceCard();maybeAutoPostWeekly()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});render();renderHomeRanking();renderPaceCard()},function(){});
 }).catch(function(){});
 claude.use("user").then(function(u){userCanEdit=!!(u&&u.canEdit());maybeAutoPostWeekly()}).catch(function(){});
 })();
