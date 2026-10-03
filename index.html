@@ -420,7 +420,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="box"><small>成約率（着座→成約）</small><b id="kpi-deal">-</b></div>
 </div>
 
-<section class="box"><h2><span class="hic" aria-hidden="true">🏢</span>現場ごとの期間別達成率</h2><p class="jsub">MNPと新規（通常）の内訳つきで、現場の進み具合を確認します</p>
+<section class="box"><h2><span class="hic" aria-hidden="true">🏢</span>現場ごとの期間別達成率</h2><p class="jsub">MNP新規（合算）の実績で、現場の進み具合を確認します</p>
 <label style="display:block;margin-bottom:12px">週目で一覧表示（任意）
 <select id="st-week" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
 <option value="">個別の現場を選んで表示する</option>
@@ -437,7 +437,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
 <div class="tw"><table>
-<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規（通常）</th><th>総合達成率</th></tr></thead>
+<thead><tr><th>現場</th><th>稼働者</th><th>MNP新規</th><th>総合達成率</th></tr></thead>
 <tbody id="st-rows"></tbody><tfoot id="st-foot"></tfoot></table></div>
 <div id="st-cards" class="jcards"></div>
 <div id="st-empty" class="empty" hidden>現場（代理店シフト）がまだ登録されていません。管理者専用ページの「代理店シフト管理」から登録してください。</div>
@@ -566,7 +566,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </section>
 <section class="adm-page" id="adm-ashift" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
-<p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP・新規（通常）の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
+<p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP新規の目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">代理店</h3>
 <p class="note" style="margin-top:0">項目を長押しすると好きな位置にドラッグでき、シフト表の表示順（代理店ごとの並び順）を変更できます。</p>
 <div id="as-ag-list" style="margin-bottom:10px"></div>
@@ -586,8 +586,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <option value="4">4週目</option>
 <option value="5">5週目</option>
 </select></label>
-<label style="font-size:13px;color:var(--sub)">MNP目標<input id="as-bl-mnp" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
-<label style="font-size:13px;color:var(--sub)">新規（通常）目標<input id="as-bl-new" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
+<label style="font-size:13px;color:var(--sub)">MNP新規目標<input id="as-bl-target" type="number" min="0" step="1" value="0" style="display:block;margin-top:2px;width:90px"></label>
 <button class="btn" type="submit">ブロックを追加</button>
 </form>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">割り当ての編集</h3>
@@ -1135,10 +1134,10 @@ function rowFor(b){
     if(ds<b.start||ds>b.end)return;
     if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
   });
-  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
+  var mt=N(b.mnpTarget)+N(b.newTarget),gt=mt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
   return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td style="white-space:normal">'+staffHtml+'</td>'
-   +'<td>'+prog(mnp,mt)+'</td><td>'+prog(neu,nt)+'</td>'
+   +'<td>'+prog(g,gt)+'</td>'
    +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
 }
 function cardFor(b){
@@ -1150,12 +1149,11 @@ function cardFor(b){
     if(ds<b.start||ds>b.end)return;
     if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
   });
-  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
+  var mt=N(b.mnpTarget)+N(b.newTarget),gt=mt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
   return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
    +'<div class="jcard-tags">'+staffHtml+'</div>'
-   +'<div class="jcard-row"><span>MNP</span>'+prog(mnp,mt)+'</div>'
-   +'<div class="jcard-row"><span>新規（通常）</span>'+prog(neu,nt)+'</div></div>';
+   +'<div class="jcard-row"><span>MNP新規</span>'+prog(g,gt)+'</div></div>';
 }
 function render(){
   var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
@@ -1713,8 +1711,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(b.agency)+' ／ '+esc2(b.name)+' （'+b.start+'〜'+b.end+'）</span>'
          +'<label style="font-size:12px;color:var(--sub)">週目<select data-week="'+b.id+'" style="margin-left:4px">'+weekSelectHTML(b.week)+'</select></label>'
          +'<span style="font-size:12px;color:var(--sub)">稼働者 '+es+'名'+(es<ROLES.length?' <button type="button" class="del" data-addslot="'+b.id+'">＋追加</button>':'')+(es>1?' <button type="button" class="del" data-removeslot="'+b.id+'">－減らす</button>':'')+'</span>'
-         +'<label style="font-size:12px;color:var(--sub)">MNP目標<input type="number" min="0" step="1" data-mnp="'+b.id+'" value="'+N2(b.mnpTarget)+'" style="width:70px;margin-left:4px"></label>'
-         +'<label style="font-size:12px;color:var(--sub)">新規（通常）目標<input type="number" min="0" step="1" data-newt="'+b.id+'" value="'+N2(b.newTarget)+'" style="width:70px;margin-left:4px"></label>'
+         +'<label style="font-size:12px;color:var(--sub)">MNP新規目標<input type="number" min="0" step="1" data-target="'+b.id+'" value="'+(N2(b.mnpTarget)+N2(b.newTarget))+'" style="width:70px;margin-left:4px"></label>'
          +'<button type="button" class="del" data-savetgt="'+b.id+'">保存</button>'
          +'<button type="button" class="del" data-bldel="'+b.id+'">削除</button></div>';
       }).join(""):'<p class="note">店舗ブロックが登録されていません。</p>';
@@ -1888,8 +1885,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       var ag=$("as-bl-ag").value,nm=$("as-bl-nm").value.trim(),s=$("as-bl-start").value,e=$("as-bl-end").value,wk=$("as-bl-week").value;
       if(!ag||!nm||!s||!e||!wk)return;
       if(s>e){alert("終了日は開始日より後にしてください。");return}
-      var mt=N2($("as-bl-mnp").value),nt=N2($("as-bl-new").value);
-      db.collection("ashiftBlocks").add({agency:ag,name:nm,start:s,end:e,week:wk,order:Date.now(),cells:{},mnpTarget:mt,newTarget:nt,slots:2}).catch(fail2);
+      var mt=N2($("as-bl-target").value);
+      db.collection("ashiftBlocks").add({agency:ag,name:nm,start:s,end:e,week:wk,order:Date.now(),cells:{},mnpTarget:mt,newTarget:0,slots:2}).catch(fail2);
       this.reset();
     };
     $("as-bl-list").onclick=function(ev){
@@ -1917,10 +1914,9 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       var s=ev.target.closest("[data-savetgt]");
       if(s){
         var bid=s.dataset.savetgt,row=s.closest(".row2");if(!row)return;
-        var mt=N2(row.querySelector('[data-mnp="'+bid+'"]').value);
-        var nt=N2(row.querySelector('[data-newt="'+bid+'"]').value);
+        var mt=N2(row.querySelector('[data-target="'+bid+'"]').value);
         var wk=row.querySelector('[data-week="'+bid+'"]').value;
-        db.doc("ashiftBlocks/"+bid).update({mnpTarget:mt,newTarget:nt,week:wk}).catch(fail2);
+        db.doc("ashiftBlocks/"+bid).update({mnpTarget:mt,newTarget:0,week:wk}).catch(fail2);
       }
     };
     db.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderLists();renderTable()},function(){});
