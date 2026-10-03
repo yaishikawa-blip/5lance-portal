@@ -1941,6 +1941,12 @@ function psRateFor(b){
   var mnt=N(b.mnpTarget)+N(b.newTarget),mng=mnp+neu,gt2=N(b.goldTarget),g2=gld,gtAll=mnt+gt2,gAll=mng+g2;
   return {mnt:mnt,mng:mng,gt2:gt2,g2:g2,pc:pct(gAll,gtAll)};
 }
+function eventLineLabel(b){
+  var namePart=(b.agency?b.agency:"")+(b.agency&&b.name?"/":"")+(b.name||"");
+  if(!b.start||!b.week)return namePart;
+  var m=parseD3(b.start).getMonth()+1;
+  return m+"月"+b.week+"週目　"+namePart;
+}
 function indexEventsByDate(){
   var idx={};
   events.forEach(function(ev){
@@ -2063,13 +2069,13 @@ function renderPsList(){
   $("ps-empty").textContent=q?"該当する現場が見つかりません。":"終了した現場データはまだありません。";
   $("ps-list").innerHTML=list.map(function(b){
     var r=psRateFor(b);
-    return '<div class="ps-item" data-psopen="'+esc(b.id)+'"><div class="ps-item-main"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><small>'+esc(b.start)+' 〜 '+esc(b.end)+'</small></div><span class="ps-rate '+cls(r.pc)+'">'+r.pc+'%</span></div>';
+    return '<div class="ps-item" data-psopen="'+esc(b.id)+'"><div class="ps-item-main"><b>'+esc(eventLineLabel(b))+'</b><small>'+esc(b.start)+' 〜 '+esc(b.end)+'</small></div><span class="ps-rate '+cls(r.pc)+'">'+r.pc+'%</span></div>';
   }).join("");
 }
 function renderPsDetail(b){
   var staffArr=blockStaff(b);
   var r=psRateFor(b);
-  $("ps-d-title").textContent=(b.agency?b.agency+" ／ ":"")+b.name;
+  $("ps-d-title").textContent=eventLineLabel(b);
   $("ps-d-period").textContent=b.start+" 〜 "+b.end;
   $("ps-d-kpi").innerHTML=
     '<div class="box"><small>MNP新規</small><b class="'+cls(pct(r.mng,r.mnt))+'">'+N(r.mng)+' / '+N(r.mnt)+'</b></div>'
