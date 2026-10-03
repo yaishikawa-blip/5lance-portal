@@ -353,13 +353,20 @@
     return {
       upload: function (file) {
         var path =
-          "notices/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "_" + file.name;
+          "uploads/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "_" + file.name;
         var ref = storage.ref().child(path);
         return ref.put(file).then(function (snap) {
           return snap.ref.getDownloadURL().then(function (url) {
             return { id: path, url: url, sizeBytes: file.size, contentType: file.type || "" };
           });
         });
+      },
+      delete: function (id) {
+        return storage
+          .ref()
+          .child(id)
+          .delete()
+          .catch(function () {});
       },
     };
   }
