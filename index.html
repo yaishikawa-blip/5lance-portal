@@ -872,7 +872,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </section>
 <section class="adm-page" id="adm-agency" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>代理店別 月間達成率</h2>
-<p class="note" style="margin-top:0">その月に重なっている現場（代理店シフト）を代理店ごとに合算し、目標に対する達成率を表示します。現場の目標は稼働日数で日割りし、表示中の月に含まれる日数分だけを集計しています。</p>
+<p class="note" style="margin-top:0">その月に重なっている現場（代理店シフト）を代理店ごとに合算し、目標に対する達成率を表示します。シフト表の現場管理に合わせ、月をまたぐ現場も按分せず目標・実績をそのまま集計するため、現場が終了するまでは重なる月すべてに同じ現場の数字が表示されます。</p>
 <div class="nav">
 <button class="nb" id="ag-mon-prev">前の月</button><span id="ag-mon-range"></span><button class="nb" id="ag-mon-next">次の月</button><button class="nb" id="ag-mon-today">今月</button>
 </div>
@@ -3038,10 +3038,11 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       Object.keys(cells).forEach(function(role){var byDate=cells[role]||{};Object.keys(byDate).forEach(function(dk){var v=byDate[dk];if(!v)return;var nm=plainNameA(v);if(nm)set[nm]=true})});
       return Object.keys(set);
     }
-    function indexEventsByDateA(){
-      var idx={};
-      agEvents.forEach(function(ev){var ds=ymdA(new Date(ev.ts));(idx[ds]=idx[ds]||[]).push(ev)});
-      return idx;
+    function evMatchesBlockA(ev,b,staffArr){
+      if(ev.blockId===b.id)return true;
+      if(staffArr.indexOf(ev.name)<0)return false;
+      var ds=ymdA(new Date(ev.ts));
+      return ds>=b.start&&ds<=b.end;
     }
     function pctA(a,t){return t>0?Math.round(a/t*1000)/10:0}
     function clsA(r){return r>=100?"ok":r>=80?"mid":"low"}
@@ -3049,7 +3050,6 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       var ms=ymdA(new Date(agCursor.getFullYear(),agCursor.getMonth(),1));
       var me=ymdA(new Date(agCursor.getFullYear(),agCursor.getMonth()+1,0));
       $("ag-mon-range").textContent=agCursor.getFullYear()+"年"+(agCursor.getMonth()+1)+"月";
-      var idx=indexEventsByDateA();
       var relevant=agBlocks.filter(function(b){return b.start&&b.end&&b.start<=me&&b.end>=ms});
       var agg={};
       relevant.forEach(function(b){
@@ -3057,24 +3057,15 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
         agg[ag]=agg[ag]||{blockIds:{},mnt:0,mng:0,gt:0,g:0};
         agg[ag].blockIds[b.id]=1;
         var staffArr=blockStaffA(b);
-        var cur=parseDA(b.start),end=parseDA(b.end);
-        var totalDays=Math.round((end-cur)/86400000)+1;
-        var mntPerDay=((Number(b.mnpTarget)||0)+(Number(b.newTarget)||0))/(totalDays||1);
-        var gtPerDay=(Number(b.goldTarget)||0)/(totalDays||1);
-        while(cur<=end){
-          var ds=ymdA(cur);
-          if(ds>=ms&&ds<=me){
-            agg[ag].mnt+=mntPerDay;
-            agg[ag].gt+=gtPerDay;
-            (idx[ds]||[]).forEach(function(ev){
-              var match=ev.blockId===b.id||(staffArr.indexOf(ev.name)>-1);
-              if(!match)return;
-              if(ev.type==="mnp"||ev.type==="new")agg[ag].mng++;
-              else if(ev.type==="gcreca")agg[ag].g++;
-            });
-          }
-          cur=addDA(cur,1);
-        }
+        var mnp=0,neu=0,gld=0;
+        agEvents.forEach(function(ev){
+          if(!evMatchesBlockA(ev,b,staffArr))return;
+          if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;else if(ev.type==="gcreca")gld++;
+        });
+        agg[ag].mnt+=(Number(b.mnpTarget)||0)+(Number(b.newTarget)||0);
+        agg[ag].gt+=Number(b.goldTarget)||0;
+        agg[ag].mng+=mnp+neu;
+        agg[ag].g+=gld;
       });
       var names=Object.keys(agg).sort(function(a,b){
         var oa=agAgencies.filter(function(x){return x.name===a})[0];
