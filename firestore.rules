@@ -82,10 +82,13 @@ service cloud.firestore {
     }
 
     // アクセスログ：誰でも自分のアクセス記録は作成・更新できますが、
-    // 読み取り（一覧の閲覧）は本物の管理者のみです。
+    // 一覧の閲覧は本物の管理者のみです。記録前に「自分の記録が既にあるか」を
+    // 確認する処理があるため、自分のドキュメント（ID末尾が自分のUID）だけは
+    // 一覧権限がなくても get できるようにしています（blockedUsers と同じ考え方）。
     match /accessLogs/{id} {
+      allow get: if isAllowedDomain() && id.matches('.*_' + request.auth.uid + '$');
+      allow list: if isAdmin();
       allow create, update: if isAllowedDomain() && request.resource.data.uid == request.auth.uid;
-      allow read: if isAdmin();
       allow delete: if isAdmin();
     }
 
