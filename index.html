@@ -383,6 +383,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="msg" id="e-msg" role="status"></div>
 <p class="note">商材のボタンをタップして件数を選び（何度でもタップできます）、最後に「この内容で報告する」を押すと記録されます。押し間違えたときは各項目の「−1」で減らせます。「今月」の数字は、選んだ担当者のこれまでの記録の合計です。</p>
 </div>
+<div class="card" id="freport-card" style="margin-top:16px"><h2>キャッチ・着座・成約を記録する</h2>
+<p class="note" style="margin:0 0 10px">担当者は上の欄で選んだ方と同じです。こちらは商材とは別に記録されます。</p>
+<div class="tapgrid" id="f-taps"></div>
+<div id="f-pending" style="margin-top:14px;font-weight:700"></div>
+<button class="btn" id="f-submit" style="margin-top:10px">この内容で報告する</button>
+<div class="msg" id="f-msg" role="status"></div>
+</div>
 </section>
 <section id="jisseki" role="tabpanel" hidden>
 <button class="back" data-p="home">トップへ戻る</button>
@@ -403,7 +410,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
 <div class="tw"><table>
-<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規（通常）</th><th class="sub">キャッチ</th><th class="sub">着座</th><th class="sub">成約</th><th class="sub">着座率</th><th class="sub">成約率</th><th>総合達成率</th></tr></thead>
+<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規（通常）</th><th>総合達成率</th></tr></thead>
 <tbody id="st-rows"></tbody><tfoot id="st-foot"></tfoot></table></div>
 <div id="st-cards" class="jcards"></div>
 <div id="st-empty" class="empty" hidden>現場（代理店シフト）がまだ登録されていません。管理者専用ページの「代理店シフト管理」から登録してください。</div>
@@ -419,6 +426,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="j-cards" class="jcards"></div>
 <div id="j-empty" class="empty" hidden>この月の目標・報告はまだありません。下から報告してください。</div>
 <p class="note">達成率は、この月に報告された記録を合計し、月間目標で割った値です。月間目標は管理者が設定します。</p>
+</section>
+
+<section class="box"><h2>キャッチ・着座・成約の実績</h2><p class="jsub">担当者ごとの今月のキャッチ・着座・成約件数と、着座率・成約率です（実績報告ページの別枠から記録されたものです）</p>
+<div class="tw"><table>
+<thead><tr><th>担当者</th><th class="sub">キャッチ</th><th class="sub">着座</th><th class="sub">成約</th><th class="sub">着座率</th><th class="sub">成約率</th></tr></thead>
+<tbody id="f-agg"></tbody><tfoot id="f-aggfoot"></tfoot></table></div>
+<div id="f-cards" class="jcards"></div>
+<div id="f-empty" class="empty" hidden>この月のキャッチ・着座・成約の記録はまだありません。</div>
+<p class="note">着座率はキャッチ数に対する着座数の割合、成約率は着座数に対する成約数の割合です。</p>
 </section>
 
 <section class="box"><h2>獲得の記録一覧</h2><p class="jsub">1件ずつの記録です。押し間違いはここから取り消せます</p>
@@ -728,9 +744,6 @@ function prog(a,t){
 var TYPES=[
   {k:"mnp",l:"MNP",target:true},
   {k:"new",l:"新規（通常）",target:true},
-  {k:"catch",l:"キャッチ"},
-  {k:"seated",l:"着座"},
-  {k:"deal",l:"成約"},
   {k:"cellup",l:"セルアップ"},
   {k:"creca",l:"クレカ"},
   {k:"gcreca",l:"Gクレカ"},
@@ -741,20 +754,40 @@ var TYPES=[
   {k:"denki",l:"でんき"},
   {k:"gas",l:"ガス"}
 ];
-var TLABEL={};TYPES.forEach(function(t){TLABEL[t.k]=t.l});
+var FTYPES=[
+  {k:"catch",l:"キャッチ"},
+  {k:"seated",l:"着座"},
+  {k:"deal",l:"成約"}
+];
+var TLABEL={};TYPES.concat(FTYPES).forEach(function(t){TLABEL[t.k]=t.l});
 var PLAIN=TYPES.filter(function(t){return !t.target});
 var pending={};TYPES.forEach(function(t){pending[t.k]=0});
+var fpending={};FTYPES.forEach(function(t){fpending[t.k]=0});
 var events=[],targets=[],names=[],db=null;
 var cursor=new Date();cursor.setDate(1);
 
 function selectedName(){return $("e-name").value}
 
-$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規（通常）</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th class="sub">着座率</th><th class="sub">成約率</th><th>総合達成率</th>';
+$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規（通常）</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th>総合達成率</th>';
 $("e-taps").innerHTML=TYPES.map(function(t,i){
   return '<div class="tapcard"><button class="tapbtn'+(t.target?" target":"")+'" data-type="'+t.k+'">'+esc(t.l)+'<span class="tapcount" data-pending="'+t.k+'">0</span></button>'
    +'<div class="taprow2"><button class="tapundo" data-minus="'+t.k+'">−1</button><span class="tapmonth" data-month="'+t.k+'">今月 0件</span></div></div>';
 }).join("");
 updatePendingUI();
+$("f-taps").innerHTML=FTYPES.map(function(t){
+  return '<div class="tapcard"><button class="tapbtn" data-ftype="'+t.k+'">'+esc(t.l)+'<span class="tapcount" data-fpending="'+t.k+'">0</span></button>'
+   +'<div class="taprow2"><button class="tapundo" data-fminus="'+t.k+'">−1</button><span class="tapmonth" data-fmonth="'+t.k+'">今月 0件</span></div></div>';
+}).join("");
+function updateFPendingUI(){
+  var total=0;
+  FTYPES.forEach(function(t){
+    var v=fpending[t.k]||0;total+=v;
+    var el=document.querySelector('[data-fpending="'+t.k+'"]');if(el)el.textContent=v;
+  });
+  $("f-pending").textContent=total>0?"選択中: 合計"+total+"件":"";
+  $("f-submit").disabled=total===0;
+}
+updateFPendingUI();
 
 function render(){
   var mKey=ym(cursor);
@@ -784,32 +817,45 @@ function render(){
   $("j-agg").innerHTML=list.map(function(n){
     var t=tgt[n]||{},a=agg[n]||{};
     var g=N(a.mnp)+N(a.new),gt=N(t.mnpTarget)+N(t.newTarget),p=pct(g,gt),c=cls(p);
-    var seatRate=pct(N(a.seated),N(a.catch)),dealRate=pct(N(a.deal),N(a.seated));
     return '<tr><td>'+esc(n)+'</td>'
      +'<td>'+prog(a.mnp,t.mnpTarget)+'</td>'
      +'<td>'+prog(a.new,t.newTarget)+'</td>'
      +PLAIN.map(function(pt){return '<td class="sub">'+yen(N(a[pt.k]))+'</td>'}).join("")
-     +'<td class="sub">'+seatRate+'%</td>'
-     +'<td class="sub">'+dealRate+'%</td>'
      +'<td><span class="rate '+c+'">'+p+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(p,100)+'%"></i></span></td></tr>'}).join("");
-  var seatRateSum=pct(psum.seated||0,psum.catch||0),dealRateSum=pct(psum.deal||0,psum.seated||0);
   $("j-aggfoot").innerHTML=list.length?'<tr><td>合計</td><td>'+yen(sum.m)+' / '+yen(sum.mt)+'</td><td>'+yen(sum.n)+' / '+yen(sum.nt)+'</td>'
-   +PLAIN.map(function(pt){return '<td class="sub">'+yen(psum[pt.k])+'</td>'}).join("")
-   +'<td class="sub">'+seatRateSum+'%</td>'
-   +'<td class="sub">'+dealRateSum+'%</td>'
-   +'<td><b>'+rate+'%</b></td></tr>':"";
+   +PLAIN.map(function(pt){return '<td class="sub">'+yen(psum[pt.k])+'</td>'}).join("")+'<td><b>'+rate+'%</b></td></tr>':"";
   $("j-cards").innerHTML=list.map(function(n){
     var t=tgt[n]||{},a=agg[n]||{};
     var g=N(a.mnp)+N(a.new),gt=N(t.mnpTarget)+N(t.newTarget),p=pct(g,gt),c=cls(p);
-    var seatRate=pct(N(a.seated),N(a.catch)),dealRate=pct(N(a.deal),N(a.seated));
-    var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("")
-     +'<span>着座率 '+seatRate+'%</span><span>成約率 '+dealRate+'%</span>';
+    var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("");
     return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc(n)+'</b><span class="rate '+c+'">'+p+'%</span></div>'
      +'<div class="jcard-row"><span>MNP</span>'+prog(a.mnp,t.mnpTarget)+'</div>'
      +'<div class="jcard-row"><span>新規（通常）</span>'+prog(a.new,t.newTarget)+'</div>'
      +'<div class="jcard-sub">'+subHtml+'</div></div>';
   }).join("");
   $("j-empty").hidden=list.length>0;
+
+  var fsum={catch:0,seated:0,deal:0};
+  list.forEach(function(n){var a=agg[n]||{};fsum.catch+=N(a.catch);fsum.seated+=N(a.seated);fsum.deal+=N(a.deal)});
+  var fSeatRate=pct(fsum.seated,fsum.catch),fDealRate=pct(fsum.deal,fsum.seated);
+  $("f-agg").innerHTML=list.map(function(n){
+    var a=agg[n]||{};
+    var seatRate=pct(N(a.seated),N(a.catch)),dealRate=pct(N(a.deal),N(a.seated));
+    return '<tr><td>'+esc(n)+'</td><td class="sub">'+yen(N(a.catch))+'</td><td class="sub">'+yen(N(a.seated))+'</td><td class="sub">'+yen(N(a.deal))+'</td>'
+     +'<td class="sub">'+seatRate+'%</td><td class="sub">'+dealRate+'%</td></tr>';
+  }).join("");
+  $("f-aggfoot").innerHTML=list.length?'<tr><td>合計</td><td class="sub">'+yen(fsum.catch)+'</td><td class="sub">'+yen(fsum.seated)+'</td><td class="sub">'+yen(fsum.deal)+'</td>'
+   +'<td class="sub">'+fSeatRate+'%</td><td class="sub">'+fDealRate+'%</td></tr>':"";
+  $("f-cards").innerHTML=list.map(function(n){
+    var a=agg[n]||{};
+    var seatRate=pct(N(a.seated),N(a.catch)),dealRate=pct(N(a.deal),N(a.seated));
+    return '<div class="jcard"><div class="jcard-head"><b>'+esc(n)+'</b></div>'
+     +'<div class="jcard-row"><span>キャッチ</span><span>'+yen(N(a.catch))+'</span></div>'
+     +'<div class="jcard-row"><span>着座</span><span>'+yen(N(a.seated))+'</span></div>'
+     +'<div class="jcard-row"><span>成約</span><span>'+yen(N(a.deal))+'</span></div>'
+     +'<div class="jcard-sub"><span>着座率 '+seatRate+'%</span><span>成約率 '+dealRate+'%</span></div></div>';
+  }).join("");
+  $("f-empty").hidden=list.length>0;
 
   var seen={},o="";names.concat(events.map(function(e){return e.name})).concat(targets.map(function(t){return t.name})).forEach(function(x){if(x&&!seen[x]){seen[x]=1;o+='<option value="'+esc(x)+'">'}});
   $("j-names").innerHTML=o;
@@ -821,6 +867,7 @@ function render(){
   $("e-name-search").placeholder=names.length?"名前を検索...":"スタッフが未登録です";
   $("e-name-search").value=$("e-name").value||"";
   renderCounts();
+  renderFCounts();
 
   var elist=monthEvents.slice().sort(function(a,b){return b.ts-a.ts});
   $("j-rows").innerHTML=elist.map(function(ev){
@@ -834,6 +881,12 @@ function renderCounts(){
   var c={};TYPES.forEach(function(t){c[t.k]=0});
   events.forEach(function(ev){if(ev.name===n&&ym(new Date(ev.ts))===mKey&&c[ev.type]!==undefined)c[ev.type]++});
   Object.keys(c).forEach(function(t){var el=document.querySelector('[data-month="'+t+'"]');if(el)el.textContent="今月 "+c[t]+"件"});
+}
+function renderFCounts(){
+  var mKey=ym(cursor),n=selectedName();
+  var c={};FTYPES.forEach(function(t){c[t.k]=0});
+  events.forEach(function(ev){if(ev.name===n&&ym(new Date(ev.ts))===mKey&&c[ev.type]!==undefined)c[ev.type]++});
+  Object.keys(c).forEach(function(t){var el=document.querySelector('[data-fmonth="'+t+'"]');if(el)el.textContent="今月 "+c[t]+"件"});
 }
 function updatePendingUI(){
   var total=0;
@@ -852,8 +905,11 @@ function fail(){alert("保存できませんでした。編集権限があるか
 function onNameChange(){
   TYPES.forEach(function(t){pending[t.k]=0});
   updatePendingUI();
+  FTYPES.forEach(function(t){fpending[t.k]=0});
+  updateFPendingUI();
   try{localStorage.setItem("jisseki-last-name",$("e-name").value)}catch(e){}
   renderCounts();
+  renderFCounts();
 }
 $("e-name").onchange=onNameChange;
 function selectName(n){
@@ -917,6 +973,37 @@ $("e-submit").onclick=function(){
   }
   next(0);
 };
+$("f-taps").onclick=function(ev){
+  var b=ev.target.closest(".tapbtn"),m=ev.target.closest(".tapundo");
+  if(b){fpending[b.dataset.ftype]=(fpending[b.dataset.ftype]||0)+1;updateFPendingUI();return}
+  if(m){var k=m.dataset.fminus;if(fpending[k]>0){fpending[k]--;updateFPendingUI()}return}
+};
+$("f-submit").onclick=function(){
+  var n=selectedName();
+  if(!n){$("f-msg").textContent="先に担当者を選んでください。";return}
+  if(!db){$("f-msg").textContent="読み込み中です。少し待ってから押してください。";return}
+  var jobs=[];
+  FTYPES.forEach(function(t){var q=fpending[t.k]||0;for(var i=0;i<q;i++)jobs.push(t.k)});
+  if(!jobs.length){$("f-msg").textContent="記録する項目を選んでください。";return}
+  $("f-submit").disabled=true;$("f-msg").textContent="記録しています…";
+  function fnext(i){
+    if(i>=jobs.length){
+      var counts={};jobs.forEach(function(k){counts[k]=(counts[k]||0)+1});
+      var summary=Object.keys(counts).map(function(k){return (TLABEL[k]||k)+counts[k]+"件"}).join("、");
+      FTYPES.forEach(function(t){fpending[t.k]=0});
+      updateFPendingUI();
+      $("f-msg").textContent=jobs.length+"件を記録しました。";
+      if(window.__reportToast)window.__reportToast(n+"さんが"+summary+"を記録しました");
+      claude.use("room").then(function(room){if(room)room.emit("report",{name:n,summary:summary})}).catch(function(){});
+      return;
+    }
+    db.collection("events").add({name:n,type:jobs[i],ts:Date.now()}).then(function(){fnext(i+1)},function(){
+      $("f-submit").disabled=false;
+      $("f-msg").textContent="途中で記録できなくなりました（"+i+"/"+jobs.length+"件まで記録済み）。編集権限を確認してもう一度お試しください。";
+    });
+  }
+  fnext(0);
+};
 $("j-rows").onclick=function(ev){
   var d=ev.target.closest("[data-rd]");if(!d||!db)return;
   var r=events.filter(function(x){return x.id===d.dataset.rd})[0];if(!r)return;
@@ -951,38 +1038,36 @@ function blockStaff(b){
 }
 var blocks=[],events=[];
 function selectedBlock(){return blocks.filter(function(b){return b.id===$("st-period").value})[0]}
-function countsFor(b){
+function rowFor(b){
   var staffArr=blockStaff(b);
-  var c={mnp:0,"new":0,catch:0,seated:0,deal:0};
+  var mnp=0,neu=0;
   events.forEach(function(ev){
     if(staffArr.indexOf(ev.name)<0)return;
     var d=new Date(ev.ts),ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     if(ds<b.start||ds>b.end)return;
-    if(c[ev.type]!==undefined)c[ev.type]++;
+    if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
   });
-  return {staffArr:staffArr,c:c};
-}
-function rowFor(b){
-  var r=countsFor(b),staffArr=r.staffArr,c=r.c;
-  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=c.mnp+c.new,pc=pct(g,gt),cl=cls(pc);
-  var seatRate=pct(c.seated,c.catch),dealRate=pct(c.deal,c.seated);
+  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
   return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td style="white-space:normal">'+staffHtml+'</td>'
-   +'<td>'+prog(c.mnp,mt)+'</td><td>'+prog(c.new,nt)+'</td>'
-   +'<td class="sub">'+yen(c.catch)+'</td><td class="sub">'+yen(c.seated)+'</td><td class="sub">'+yen(c.deal)+'</td>'
-   +'<td class="sub">'+seatRate+'%</td><td class="sub">'+dealRate+'%</td>'
-   +'<td><span class="rate '+cl+'">'+pc+'%</span> <span class="bar"><i class="'+(cl==="ok"?"":cl)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
+   +'<td>'+prog(mnp,mt)+'</td><td>'+prog(neu,nt)+'</td>'
+   +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
 }
 function cardFor(b){
-  var r=countsFor(b),staffArr=r.staffArr,c=r.c;
-  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=c.mnp+c.new,pc=pct(g,gt),cl=cls(pc);
-  var seatRate=pct(c.seated,c.catch),dealRate=pct(c.deal,c.seated);
+  var staffArr=blockStaff(b);
+  var mnp=0,neu=0;
+  events.forEach(function(ev){
+    if(staffArr.indexOf(ev.name)<0)return;
+    var d=new Date(ev.ts),ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    if(ds<b.start||ds>b.end)return;
+    if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
+  });
+  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
-  return '<div class="jcard '+cl+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+cl+'">'+pc+'%</span></div>'
+  return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
    +'<div class="jcard-tags">'+staffHtml+'</div>'
-   +'<div class="jcard-row"><span>MNP</span>'+prog(c.mnp,mt)+'</div>'
-   +'<div class="jcard-row"><span>新規（通常）</span>'+prog(c.new,nt)+'</div>'
-   +'<div class="jcard-sub"><span>キャッチ '+yen(c.catch)+'</span><span>着座 '+yen(c.seated)+'</span><span>成約 '+yen(c.deal)+'</span><span>着座率 '+seatRate+'%</span><span>成約率 '+dealRate+'%</span></div></div>';
+   +'<div class="jcard-row"><span>MNP</span>'+prog(mnp,mt)+'</div>'
+   +'<div class="jcard-row"><span>新規（通常）</span>'+prog(neu,nt)+'</div></div>';
 }
 function render(){
   var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
@@ -1797,7 +1882,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
   };
   function ym2(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")}
   var mNow=ym2(new Date());
-  var TLABEL2={mnp:"MNP",new:"新規（通常）",cellup:"セルアップ",creca:"クレカ",gcreca:"Gクレカ",norton:"ノートン",ott:"OTT",setai:"世帯商材",net:"ネットワーク",denki:"でんき",gas:"ガス"};
+  var TLABEL2={mnp:"MNP",new:"新規（通常）",catch:"キャッチ",seated:"着座",deal:"成約",cellup:"セルアップ",creca:"クレカ",gcreca:"Gクレカ",norton:"ノートン",ott:"OTT",setai:"世帯商材",net:"ネットワーク",denki:"でんき",gas:"ガス"};
   var rec=[],tgt=[],st=0,sh=0,staffMap={},asBlockDocs=[];
   function stats(){
     var T=0,A=0;
