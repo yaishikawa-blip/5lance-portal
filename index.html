@@ -374,6 +374,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #pastsites .ps-rate.ok{color:var(--acc)}
 #pastsites .ps-rate.mid{color:var(--warn)}
 #pastsites .ps-rate.low{color:var(--bad)}
+#pastsites .ps-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+#pastsites .ps-tab{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:7px 16px;font:inherit;font-size:13px;color:var(--sub);cursor:pointer}
+#pastsites .ps-tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+#pastsites .psa-bars{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+#pastsites .psa-bar-row{display:flex;align-items:center;gap:10px}
+#pastsites .psa-bar-label{font-size:13px;font-weight:700;color:var(--sub);flex:0 0 auto;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pastsites .psa-bar-track{flex:1;height:14px;border-radius:999px;background:var(--track);overflow:hidden;box-shadow:inset 0 1px 2px rgba(3,32,95,.08)}
+#pastsites .psa-bar-fill{height:100%;border-radius:inherit;background:var(--acc);transition:width .4s ease}
+#pastsites .psa-bar-fill.wk{background:var(--et)}
+#pastsites .psa-bar-fill.lo{background:var(--bad)}
+#pastsites .psa-bar-val{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;font-size:13px;flex:0 0 52px}
 #dayoff #do-submit{background:#1a8754;color:#fff;border:0;border-radius:12px;padding:16px 22px;font-weight:800;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 3px 8px rgba(0,0,0,.18);width:100%;justify-content:center}
 #dayoff #do-submit span{font-size:20px}
 #dayoff #do-submit:active{background:#156a42}
@@ -651,6 +662,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="back" data-p="home">トップへ戻る</button>
 <h1 style="font-size:22px;margin:0 0 14px">過去現場データ</h1>
 <p class="jsub" style="margin:0 0 14px">期間が終了した現場（代理店シフト）の実績・稼働者・日別獲得数・写真をまとめて確認できます</p>
+<div class="ps-tabs" id="ps-tabs">
+<button type="button" class="ps-tab active" data-pstab="browse">現場一覧</button>
+<button type="button" class="ps-tab" data-pstab="analysis">営業戦略分析</button>
+</div>
+<div id="ps-browse-panel">
 <div style="margin-bottom:12px">
 <input type="search" id="ps-search" placeholder="🔍 現場名・代理店名で検索..." autocomplete="off" aria-label="現場名で検索" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px">
 </div>
@@ -659,6 +675,37 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 <div id="ps-empty" class="empty" hidden>終了した現場データはまだありません。</div>
 <div id="ps-list"></div>
+</div>
+<div id="ps-analysis-panel" hidden>
+<div class="wk" style="margin-bottom:14px;flex-wrap:wrap">
+<label style="font-size:13px;color:var(--sub)">対象期間
+<select id="psa-period" style="margin-left:6px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+<option value="all">全期間</option>
+<option value="3">直近3ヶ月</option>
+<option value="6">直近6ヶ月</option>
+<option value="12">直近12ヶ月</option>
+</select>
+</label>
+</div>
+<div id="psa-empty" class="empty" hidden>分析できる終了済み現場データがまだありません。</div>
+<div id="psa-body">
+<div class="card"><h2>曜日別の傾向</h2>
+<p class="note" style="margin-top:0">終了した現場の稼働日を曜日ごとに集計し、1日あたりの平均獲得数（新規＋ゴールド）を比較します。</p>
+<div class="psa-bars" id="psa-wk-chart"></div>
+<div class="tw"><table><thead><tr><th>曜日</th><th>稼働日数</th><th>キャッチ</th><th>着座</th><th>着座率</th><th>新規</th><th>ゴールド</th><th>1日平均</th></tr></thead><tbody id="psa-wk-rows"></tbody></table></div>
+</div>
+<div class="card"><h2>月別・期間推移</h2>
+<p class="note" style="margin-top:0">月ごとの達成率の推移です（現場の目標を稼働日数で按分して集計しています）。</p>
+<div class="psa-bars" id="psa-month-chart"></div>
+<div class="tw"><table><thead><tr><th>月</th><th>目標</th><th>実績</th><th>達成率</th><th>キャッチ</th><th>着座</th><th>着座率</th></tr></thead><tbody id="psa-month-rows"></tbody></table></div>
+</div>
+<div class="card"><h2>スタッフ別ランキング</h2>
+<p class="note" style="margin-top:0">終了した現場での個人の成果を合計したランキングです（担当者なしの調整記録は含みません）。</p>
+<div class="psa-bars" id="psa-staff-chart"></div>
+<div class="tw"><table><thead><tr><th>順位</th><th>スタッフ</th><th>キャッチ</th><th>着座</th><th>着座率</th><th>新規</th><th>ゴールド</th><th>合計</th></tr></thead><tbody id="psa-staff-rows"></tbody></table></div>
+</div>
+</div>
+</div>
 </div>
 <div id="ps-detail-view" hidden>
 <button class="back" id="ps-detail-back">一覧へ戻る</button>
@@ -1864,6 +1911,106 @@ function psRateFor(b){
   var mnt=N(b.mnpTarget)+N(b.newTarget),mng=mnp+neu,gt2=N(b.goldTarget),g2=gld,gtAll=mnt+gt2,gAll=mng+g2;
   return {mnt:mnt,mng:mng,gt2:gt2,g2:g2,pc:pct(gAll,gtAll)};
 }
+function indexEventsByDate(){
+  var idx={};
+  events.forEach(function(ev){
+    var ds=ymd3(new Date(ev.ts));
+    (idx[ds]=idx[ds]||[]).push(ev);
+  });
+  return idx;
+}
+function monthKeyOf(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function psaPeriodBlocks(){
+  var val=$("psa-period").value,list=endedBlocks();
+  if(val==="all")return list;
+  var months=Number(val),cutoff=new Date();
+  cutoff.setDate(1);cutoff.setMonth(cutoff.getMonth()-months+1);
+  var cutoffStr=ymd3(cutoff);
+  return list.filter(function(b){return b.end>=cutoffStr});
+}
+function buildAnalysis(blocksArr){
+  var idx=indexEventsByDate();
+  var wk=[];for(var i=0;i<7;i++)wk.push({days:0,catch:0,seated:0,shin:0,gold:0});
+  var month={},staff={};
+  blocksArr.forEach(function(b){
+    if(!b.start||!b.end)return;
+    var staffArr=blockStaff(b);
+    var cur=parseD3(b.start),end=parseD3(b.end);
+    var totalDays=Math.round((end-cur)/86400000)+1;
+    var dailyTarget=(N(b.mnpTarget)+N(b.newTarget)+N(b.goldTarget))/(totalDays||1);
+    while(cur<=end){
+      var ds=ymd3(cur),mk=monthKeyOf(cur);
+      month[mk]=month[mk]||{target:0,shin:0,gold:0,catch:0,seated:0,days:0};
+      month[mk].target+=dailyTarget;
+      month[mk].days++;
+      var wkE=wk[cur.getDay()];
+      wkE.days++;
+      (idx[ds]||[]).forEach(function(ev){
+        var blockMatch=ev.blockId===b.id||(staffArr.indexOf(ev.name)>-1);
+        if(blockMatch){
+          if(ev.type==="catch"){wkE.catch++;month[mk].catch++;}
+          else if(ev.type==="seated"){wkE.seated++;month[mk].seated++;}
+          else if(ev.type==="mnp"||ev.type==="new"){wkE.shin++;month[mk].shin++;}
+          else if(ev.type==="gcreca"){wkE.gold++;month[mk].gold++;}
+        }
+        if(!ev.siteAdjust&&staffArr.indexOf(ev.name)>-1){
+          var s=staff[ev.name]=staff[ev.name]||{catch:0,seated:0,shin:0,gold:0};
+          if(ev.type==="catch")s.catch++;
+          else if(ev.type==="seated")s.seated++;
+          else if(ev.type==="mnp"||ev.type==="new")s.shin++;
+          else if(ev.type==="gcreca")s.gold++;
+        }
+      });
+      cur=addD3(cur,1);
+    }
+  });
+  return {weekday:wk,month:month,staff:staff};
+}
+function barRow(label,val,max,extraCls){
+  var w=max>0?(val>0?Math.max(4,Math.round(val/max*100)):0):0;
+  return '<div class="psa-bar-row"><span class="psa-bar-label">'+esc(label)+'</span><div class="psa-bar-track"><div class="psa-bar-fill'+(extraCls?" "+extraCls:"")+'" style="width:'+Math.min(w,100)+'%"></div></div><span class="psa-bar-val">'+val+'</span></div>';
+}
+function renderAnalysis(){
+  var list=psaPeriodBlocks();
+  var has=list.length>0;
+  $("psa-empty").hidden=has;
+  $("psa-body").hidden=!has;
+  if(!has)return;
+  var a=buildAnalysis(list);
+  var wkMax=0;
+  a.weekday.forEach(function(w){var avg=w.days>0?(w.shin+w.gold)/w.days:0;if(avg>wkMax)wkMax=avg});
+  $("psa-wk-chart").innerHTML=a.weekday.map(function(w,i){
+    var avg=w.days>0?Math.round((w.shin+w.gold)/w.days*10)/10:0;
+    return barRow(WD[i],avg,wkMax,(i===0||i===6)?"wk":"");
+  }).join("");
+  $("psa-wk-rows").innerHTML=a.weekday.map(function(w,i){
+    var seatRate=pct(w.seated,w.catch),avg=w.days>0?Math.round((w.shin+w.gold)/w.days*10)/10:0;
+    return '<tr><td>'+WD[i]+'</td><td>'+w.days+'</td><td>'+w.catch+'</td><td>'+w.seated+'</td><td>'+seatRate+'%</td><td>'+w.shin+'</td><td>'+w.gold+'</td><td>'+avg+'</td></tr>';
+  }).join("");
+  var monthKeys=Object.keys(a.month).sort();
+  $("psa-month-chart").innerHTML=monthKeys.map(function(mk){
+    var m=a.month[mk],pc=pct(m.shin+m.gold,m.target),p=mk.split("-"),label=p[0]+"/"+Number(p[1]);
+    return barRow(label,pc,100,pc<80?"lo":"");
+  }).join("");
+  $("psa-month-rows").innerHTML=monthKeys.map(function(mk){
+    var m=a.month[mk],p=mk.split("-"),label=p[0]+"年"+Number(p[1])+"月";
+    var pc=pct(m.shin+m.gold,m.target),seatRate=pct(m.seated,m.catch);
+    return '<tr><td>'+label+'</td><td>'+Math.round(m.target)+'</td><td>'+(m.shin+m.gold)+'</td><td class="'+cls(pc)+'">'+pc+'%</td><td>'+m.catch+'</td><td>'+m.seated+'</td><td>'+seatRate+'%</td></tr>';
+  }).join("");
+  var staffArr2=Object.keys(a.staff).map(function(n){
+    var s=a.staff[n];
+    return {name:n,catch:s.catch,seated:s.seated,shin:s.shin,gold:s.gold,total:s.shin+s.gold};
+  }).sort(function(x,y){return y.total-x.total});
+  var staffMax=staffArr2.length?staffArr2[0].total:0;
+  var top=staffArr2.slice(0,10);
+  $("psa-staff-chart").innerHTML=top.length?top.map(function(s){
+    return barRow(formatShiftName(s.name),s.total,staffMax,"");
+  }).join(""):'<span style="color:var(--sub);font-size:13px">データがありません。</span>';
+  $("psa-staff-rows").innerHTML=staffArr2.length?staffArr2.map(function(s,i){
+    var seatRate=pct(s.seated,s.catch);
+    return '<tr><td>'+(i+1)+'</td><td>'+esc(formatShiftName(s.name))+'</td><td>'+s.catch+'</td><td>'+s.seated+'</td><td>'+seatRate+'%</td><td>'+s.shin+'</td><td>'+s.gold+'</td><td><b>'+s.total+'</b></td></tr>';
+  }).join(""):'<tr><td colspan="8" style="text-align:center;color:var(--sub)">データがありません。</td></tr>';
+}
 function renderPsList(){
   var q=psQuery.trim();
   var list;
@@ -1938,11 +2085,20 @@ $("ps-mon-prev").onclick=function(){psCursor.setMonth(psCursor.getMonth()-1);ren
 $("ps-mon-next").onclick=function(){psCursor.setMonth(psCursor.getMonth()+1);renderPsList()};
 $("ps-mon-today").onclick=function(){psCursor=new Date();psCursor.setDate(1);renderPsList()};
 $("ps-mon-all").onclick=function(){psShowAll=!psShowAll;renderPsList()};
+$("ps-tabs").onclick=function(ev){
+  var b=ev.target.closest("[data-pstab]");if(!b)return;
+  Array.prototype.forEach.call($("ps-tabs").querySelectorAll(".ps-tab"),function(x){x.classList.toggle("active",x===b)});
+  var tab=b.dataset.pstab;
+  $("ps-browse-panel").hidden=tab!=="browse";
+  $("ps-analysis-panel").hidden=tab!=="analysis";
+  if(tab==="analysis")renderAnalysis();
+};
+$("psa-period").onchange=renderAnalysis;
 claude.use("db").then(function(d){
   if(!d)return;
-  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail()},function(){});
-  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail()},function(){});
-  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderPsList();refreshOpenPsDetail()},function(){});
+  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
+  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
 }).catch(function(){});
 })();
 
