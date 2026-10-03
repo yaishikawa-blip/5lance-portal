@@ -595,6 +595,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="as-ag-list" style="margin-bottom:10px"></div>
 <form id="as-ag-f" style="display:flex;gap:8px;margin-bottom:20px"><input id="as-ag-nm" required maxlength="20" placeholder="代理店名を入力"><button class="btn" type="submit">代理店を追加</button></form>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">店舗（現場）ブロック</h3>
+<p class="note" style="margin-top:0">既定では表示中の月に重なる現場だけを表示します。過去や先の月を見るには月を移動するか「すべて表示」を使ってください。</p>
+<div class="wk" style="margin-bottom:10px;flex-wrap:wrap">
+<button class="nb" id="as-bl-mon-prev">前の月</button><span id="as-bl-mon-range"></span><button class="nb" id="as-bl-mon-next">次の月</button><button class="nb" id="as-bl-mon-today">今月</button><button class="nb" id="as-bl-mon-all">すべて表示</button>
+<select id="as-bl-weekfilter" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+<option value="">週目（すべて）</option>
+<option value="1">1週目のみ</option>
+<option value="2">2週目のみ</option>
+<option value="3">3週目のみ</option>
+<option value="4">4週目のみ</option>
+<option value="5">5週目のみ</option>
+</select>
+</div>
 <div id="as-bl-list" style="margin-bottom:10px"></div>
 <form id="as-bl-f" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
 <select id="as-bl-ag" required style="flex:1 1 140px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
@@ -1663,6 +1675,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     var ROLE_LABEL={dir:"ディレクター",c1:"クローザー",c2:"クローザー",c3:"クローザー",c4:"クローザー",c5:"クローザー",c6:"クローザー",c7:"クローザー",c8:"クローザー",c9:"クローザー"};
     var agencies=[],blocks=[],staffNames=[],dayoffMap={};
     var winStart=new Date();winStart.setHours(0,0,0,0);
+    var blCursor=new Date();blCursor.setDate(1);
+    var blShowAll=false;
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
     function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
     function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));return a}
@@ -1752,13 +1766,27 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function weekSelectHTML(cur){
       return [1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(cur)===String(n)?" selected":"")+'>'+WEEK_LABEL[n]+'</option>'}).join("");
     }
+    function blMonthMatch(b){
+      if(blShowAll)return true;
+      var ms=fmtD(new Date(blCursor.getFullYear(),blCursor.getMonth(),1));
+      var me=fmtD(new Date(blCursor.getFullYear(),blCursor.getMonth()+1,0));
+      return !!(b.start&&b.end&&b.start<=me&&b.end>=ms);
+    }
+    function blWeekMatch(b){
+      var wk=$("as-bl-weekfilter").value;
+      return !wk||(b.week||"")===wk;
+    }
     function renderLists(){
       $("as-ag-list").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){
         return '<div class="row2 agrow" data-agid="'+a.id+'"><span class="draghandle" aria-hidden="true">⠿</span><span style="flex:1">'+esc2(a.name)+'</span>'
          +'<button type="button" class="del" data-agdel="'+a.id+'">削除</button></div>';
       }).join(""):'<p class="note">代理店が登録されていません。</p>';
       $("as-bl-ag").innerHTML=agencies.length?agencies.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(a){return '<option value="'+esc2(a.name)+'">'+esc2(a.name)+'</option>'}).join(""):'<option value="">先に代理店を追加してください</option>';
-      $("as-bl-list").innerHTML=blocks.length?blocks.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(b){
+      $("as-bl-mon-range").textContent=blShowAll?"すべての期間を表示中":blCursor.getFullYear()+"年"+(blCursor.getMonth()+1)+"月";
+      $("as-bl-mon-all").textContent=blShowAll?"月で絞り込む":"すべて表示";
+      $("as-bl-mon-prev").disabled=blShowAll;$("as-bl-mon-next").disabled=blShowAll;$("as-bl-mon-today").disabled=blShowAll;
+      var blFiltered=blocks.filter(function(b){return blMonthMatch(b)&&blWeekMatch(b)});
+      $("as-bl-list").innerHTML=blFiltered.length?blFiltered.slice().sort(function(a,b){return (a.order||0)-(b.order||0)}).map(function(b){
         var es=effSlots(b);
         return '<div class="row2" style="flex-wrap:wrap"><span style="flex:1 1 auto">'+esc2(b.agency)+' ／ '+esc2(b.name)+' （'+b.start+'〜'+b.end+'）</span>'
          +'<label style="font-size:12px;color:var(--sub)">週目<select data-week="'+b.id+'" style="margin-left:4px">'+weekSelectHTML(b.week)+'</select></label>'
@@ -1767,8 +1795,13 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
          +'<label style="font-size:12px;color:var(--sub)">ゴールド目標<input type="number" min="0" step="1" data-gold="'+b.id+'" value="'+N2(b.goldTarget)+'" style="width:70px;margin-left:4px"></label>'
          +'<button type="button" class="del" data-savetgt="'+b.id+'">保存</button>'
          +'<button type="button" class="del" data-bldel="'+b.id+'">削除</button></div>';
-      }).join(""):'<p class="note">店舗ブロックが登録されていません。</p>';
+      }).join(""):'<p class="note">'+(blocks.length?"この条件に一致する店舗ブロックがありません。月や週目の絞り込みを変更してください。":"店舗ブロックが登録されていません。")+'</p>';
     }
+    $("as-bl-mon-prev").onclick=function(){blCursor.setMonth(blCursor.getMonth()-1);renderLists()};
+    $("as-bl-mon-next").onclick=function(){blCursor.setMonth(blCursor.getMonth()+1);renderLists()};
+    $("as-bl-mon-today").onclick=function(){blCursor=new Date();blCursor.setDate(1);renderLists()};
+    $("as-bl-mon-all").onclick=function(){blShowAll=!blShowAll;renderLists()};
+    $("as-bl-weekfilter").onchange=renderLists;
     $("as-adm-prev").onclick=function(){winStart=addD(winStart,-7);renderTable()};
     $("as-adm-next").onclick=function(){winStart=addD(winStart,7);renderTable()};
     $("as-adm-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);renderTable()};
