@@ -508,9 +508,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
         <option value="3">3週目</option>
         <option value="4">4週目</option>
         <option value="5">5週目</option>
+        <option value="month">指定した月をすべて一覧表示</option>
       </select>
       <span id="as-range"></span>
     </div>
+    <div class="wk" id="as-week-monthnav" hidden style="margin-top:8px"><button class="nb" id="as-week-mon-prev">前の月</button><button class="nb" id="as-week-mon-next">次の月</button><button class="nb" id="as-week-mon-today">今月</button></div>
   </header>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
   <div class="tw" id="as-tablewrap"><table id="as-table" class="asv"></table></div>
@@ -645,6 +647,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="nb" id="as-adm-prev">前の期間</button><span id="as-adm-range"></span><button class="nb" id="as-adm-next">次の期間</button><button class="nb" id="as-adm-today">今日</button>
 <select id="as-adm-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
 <option value="">期間で表示（すべて）</option>
+<option value="month">指定した月をすべて一覧表示</option>
 <option value="1">1週目だけ一覧表示</option>
 <option value="2">2週目だけ一覧表示</option>
 <option value="3">3週目だけ一覧表示</option>
@@ -652,6 +655,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <option value="5">5週目だけ一覧表示</option>
 </select>
 </div>
+<div class="wk" id="as-adm-monthnav" hidden style="margin-top:8px"><button class="nb" id="as-adm-mon-prev">前の月</button><button class="nb" id="as-adm-mon-next">次の月</button><button class="nb" id="as-adm-mon-today">今月</button></div>
 <div id="as-adm-empty" class="empty" hidden>店舗ブロックがまだ登録されていません。</div>
 <div class="tw" id="as-adm-tablewrap"><table id="as-adm-table" class="asv"></table></div>
 <p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。各行の「一括」ボタンを押すと、その役割の期間全体（開始日〜終了日）に同じ担当者をまとめて設定できます。「（空欄にする）」を選んで保存すると削除されます。</p>
@@ -1271,12 +1275,22 @@ var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クロ�
 var agencies=[],blocks=[];
 var dbRef2=null;
 var winStart=new Date();winStart.setHours(0,0,0,0);
+var asCursor=new Date();asCursor.setDate(1);
 function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
 function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));return a}
+function monthDays(cur){var y=cur.getFullYear(),m=cur.getMonth(),days=new Date(y,m+1,0).getDate(),a=[];for(var i=1;i<=days;i++)a.push(new Date(y,m,i));return a}
 function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
 function weekFilter(){return $("as-week").value}
-function visibleBlocks(){var wk=weekFilter();return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks}
+function visibleBlocks(){
+  var wk=weekFilter();
+  if(wk==="month"){
+    var ms=fmtD(new Date(asCursor.getFullYear(),asCursor.getMonth(),1));
+    var me=fmtD(new Date(asCursor.getFullYear(),asCursor.getMonth()+1,0));
+    return blocks.filter(function(b){return b.start&&b.end&&b.start<=me&&b.end>=ms});
+  }
+  return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks;
+}
 function weekDateList(vb){
   var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
   var e=vb.reduce(function(a,b){return !a||b.end>a?b.end:a},null);
@@ -1353,8 +1367,11 @@ function buildTable(ds,vb){
 }
 function render(){
   var wk=weekFilter(),vb=visibleBlocks();
-  var ds=weekDateList(vb);
-  if(!ds.length){
+  $("as-week-monthnav").hidden=wk!=="month";
+  var ds=wk==="month"?monthDays(asCursor):weekDateList(vb);
+  if(wk==="month"){
+    $("as-range").textContent=asCursor.getFullYear()+"年"+(asCursor.getMonth()+1)+"月";
+  }else if(!ds.length){
     $("as-range").textContent=wk+"週目のブロックはまだありません";
   }else{
     var e=ds[ds.length-1];
@@ -1405,6 +1422,9 @@ function renderMonthly(){
   $("as-mon-empty").hidden=names.length>0;
 }
 $("as-week").onchange=render;
+$("as-week-mon-prev").onclick=function(){asCursor.setMonth(asCursor.getMonth()-1);render()};
+$("as-week-mon-next").onclick=function(){asCursor.setMonth(asCursor.getMonth()+1);render()};
+$("as-week-mon-today").onclick=function(){asCursor=new Date();asCursor.setDate(1);render()};
 $("as-mon-prev").onclick=function(){monCursor.setMonth(monCursor.getMonth()-1);renderMonthly()};
 $("as-mon-next").onclick=function(){monCursor.setMonth(monCursor.getMonth()+1);renderMonthly()};
 $("as-mon-today").onclick=function(){monCursor=new Date();monCursor.setDate(1);renderMonthly()};
@@ -1723,12 +1743,22 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     var winStart=new Date();winStart.setHours(0,0,0,0);
     var blCursor=new Date();blCursor.setDate(1);
     var blShowAll=false;
+    var admCursor=new Date();admCursor.setDate(1);
     function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
     function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
     function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));return a}
+    function monthDays(cur){var y=cur.getFullYear(),m=cur.getMonth(),days=new Date(y,m+1,0).getDate(),a=[];for(var i=1;i<=days;i++)a.push(new Date(y,m,i));return a}
     function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
     function weekFilter(){return $("as-adm-week").value}
-    function visibleBlocks(){var wk=weekFilter();return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks}
+    function visibleBlocks(){
+      var wk=weekFilter();
+      if(wk==="month"){
+        var ms=fmtD(new Date(admCursor.getFullYear(),admCursor.getMonth(),1));
+        var me=fmtD(new Date(admCursor.getFullYear(),admCursor.getMonth()+1,0));
+        return blocks.filter(function(b){return b.start&&b.end&&b.start<=me&&b.end>=ms});
+      }
+      return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks;
+    }
     function weekDateList(vb){
       var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
       var e=vb.reduce(function(a,b){return !a||b.end>a?b.end:a},null);
@@ -1797,9 +1827,12 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     }
     function renderTable(){
       var wk=weekFilter(),vb=visibleBlocks();
+      $("as-adm-monthnav").hidden=wk!=="month";
       $("as-adm-prev").disabled=$("as-adm-next").disabled=$("as-adm-today").disabled=!!wk;
-      var ds=wk?weekDateList(vb):dateList();
-      if(!ds.length){
+      var ds=wk==="month"?monthDays(admCursor):(wk?weekDateList(vb):dateList());
+      if(wk==="month"){
+        $("as-adm-range").textContent=admCursor.getFullYear()+"年"+(admCursor.getMonth()+1)+"月";
+      }else if(!ds.length){
         $("as-adm-range").textContent=wk?wk+"週目のブロックはまだありません":"";
       }else{
         var e=ds[ds.length-1];
@@ -1852,6 +1885,9 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     $("as-adm-next").onclick=function(){winStart=addD(winStart,7);renderTable()};
     $("as-adm-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);renderTable()};
     $("as-adm-week").onchange=renderTable;
+    $("as-adm-mon-prev").onclick=function(){admCursor.setMonth(admCursor.getMonth()-1);renderTable()};
+    $("as-adm-mon-next").onclick=function(){admCursor.setMonth(admCursor.getMonth()+1);renderTable()};
+    $("as-adm-mon-today").onclick=function(){admCursor=new Date();admCursor.setDate(1);renderTable()};
     function openStaffModal(bl,role,d){
       var ov=$("stfm-ov"),sel=$("stfm-name");
       var cur=(bl.cells&&bl.cells[role]&&bl.cells[role][d])||"";
