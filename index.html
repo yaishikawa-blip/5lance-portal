@@ -25,9 +25,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .tab[aria-selected="true"]{color:var(--acc);border-bottom-color:var(--acc)}
 .btn{color:var(--onacc)!important}
 #jisseki .wrap{max-width:960px;margin:0 auto;padding:20px 16px 48px}
-#jisseki header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:22px}
-#jisseki h1{font-size:23px;margin:0;letter-spacing:.01em}
-#jisseki .jlede{color:var(--sub);font-size:13px;margin:4px 0 0}
+#jisseki header{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:26px;padding-bottom:18px}
+#jisseki header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--navy),var(--acc) 55%,transparent)}
+#jisseki h1{font-size:27px;margin:0;letter-spacing:-.01em;font-weight:800;color:var(--navy)}
+#jisseki .jlede{color:var(--sub);font-size:13.5px;margin:6px 0 0}
+#jisseki h2 .hic{margin-right:7px;font-size:15px;vertical-align:-1px}
 #jisseki select,#jisseki input,#jisseki button{font:inherit;color:var(--ink)}
 #jisseki select,#jisseki input{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
 #jisseki .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
@@ -40,12 +42,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki .tw{overflow-x:auto;margin:0 -2px;padding:0 2px}
 #jisseki table{width:100%;border-collapse:collapse;min-width:560px;font-variant-numeric:tabular-nums}
 #jisseki th,#jisseki td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-#jisseki th{color:var(--ink);font-weight:700;font-size:12.5px;border-bottom:2px solid var(--line)}
+#jisseki th{color:var(--navy);font-weight:700;font-size:12.5px;border-bottom:2px solid var(--line);background:var(--accbg)}
 #jisseki th:first-child,#jisseki td:first-child{text-align:left}
 #jisseki tbody tr{transition:background-color .1s ease}
 #jisseki tbody tr:nth-child(even){background:var(--bg)}
 #jisseki tbody tr:hover{background:var(--accbg)}
 #jisseki th:first-child,#jisseki td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+#jisseki th:first-child{background:var(--accbg)}
 #jisseki tbody tr:nth-child(even) td:first-child{background:var(--bg)}
 #jisseki tbody tr:hover td:first-child{background:var(--accbg)}
 #jisseki tfoot td:first-child{background:var(--panel)}
@@ -68,11 +71,20 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   #jisseki .tw{display:none}
   #jisseki .jcards{display:block}
 }
-#jisseki .bar{width:150px;height:8px;background:var(--track);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle}
-#jisseki .bar i{display:block;height:100%;background:var(--acc);border-radius:inherit}
+#jisseki .bar{width:150px;height:10px;background:var(--track);border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle;box-shadow:inset 0 1px 2px rgba(3,32,95,.08)}
+#jisseki .bar i{display:block;height:100%;background:var(--acc);border-radius:inherit;transition:width .35s ease}
 #jisseki .bar i.mid{background:var(--warn)}.bar i.low{background:var(--bad)}
-#jisseki .rate{display:inline-block;min-width:52px;font-weight:700;text-align:center;padding:3px 10px;border-radius:999px;background:var(--accbg)}
+#jisseki .rate{display:inline-block;min-width:56px;font-weight:800;text-align:center;padding:4px 11px;border-radius:999px;background:var(--accbg);letter-spacing:.01em}
 #jisseki .rate.ok{color:var(--acc);background:var(--accbg)}.rate.mid{color:var(--warn);background:var(--warnbg)}.rate.low{color:var(--bad);background:var(--badbg)}
+#jisseki .funnel{display:flex;flex-direction:column;gap:12px;margin:2px 0 22px}
+#jisseki .funnel-row{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:12px}
+#jisseki .funnel-label{font-size:13px;font-weight:700;color:var(--sub)}
+#jisseki .funnel-track{height:16px;border-radius:999px;background:var(--track);overflow:hidden;box-shadow:inset 0 1px 2px rgba(3,32,95,.08)}
+#jisseki .funnel-fill{height:100%;border-radius:inherit;transition:width .4s ease}
+#jisseki .funnel-fill.f0{background:var(--acc)}
+#jisseki .funnel-fill.f1{background:var(--et)}
+#jisseki .funnel-fill.f2{background:var(--navy)}
+#jisseki .funnel-val{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
 #jisseki .del{background:none;border:0;color:var(--sub);cursor:pointer;padding:4px 8px;border-radius:4px}
 #jisseki .del:hover{color:var(--bad)}
 #jisseki form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;margin-top:16px}
@@ -314,7 +326,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki th{line-height:1.3;white-space:normal}
 #jisseki tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--navy)}
 #jisseki .sum{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
-#jisseki .sum .box b{font-size:21px}
+#jisseki .sum .box b{font-size:26px;color:var(--navy);letter-spacing:-.01em}
+#jisseki .sum .box small{font-size:12px}
+#jisseki .sum{margin-bottom:24px}
 #jisseki .prog{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:82px}
 #jisseki .prog .nums{font-variant-numeric:tabular-nums;font-weight:700}
 #jisseki .prog .nums span{color:var(--sub);font-weight:400}
@@ -399,7 +413,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="back" data-p="home">トップへ戻る</button>
 <header><div><h1>実績管理</h1><p class="jlede">現場ごと・担当者ごとの達成状況をまとめて確認できます</p></div></header>
 
-<section class="box"><h2>現場ごとの期間別達成率</h2><p class="jsub">MNPと新規（通常）の内訳つきで、現場の進み具合を確認します</p>
+<div class="sum" aria-live="polite">
+<div class="box"><small>対象スタッフ</small><b id="kpi-staff">-</b></div>
+<div class="box big"><small>今月の総合達成率</small><b id="kpi-rate">-</b></div>
+<div class="box"><small>着座率（キャッチ→着座）</small><b id="kpi-seat">-</b></div>
+<div class="box"><small>成約率（着座→成約）</small><b id="kpi-deal">-</b></div>
+</div>
+
+<section class="box"><h2><span class="hic" aria-hidden="true">🏢</span>現場ごとの期間別達成率</h2><p class="jsub">MNPと新規（通常）の内訳つきで、現場の進み具合を確認します</p>
 <label style="display:block;margin-bottom:12px">週目で一覧表示（任意）
 <select id="st-week" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
 <option value="">個別の現場を選んで表示する</option>
@@ -423,7 +444,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 
 <div class="wk" style="margin-top:20px"><button class="nb" id="j-prev">前の月</button><span id="j-range"></span><button class="nb" id="j-next">次の月</button><button class="nb" id="j-today">今月</button></div>
 
-<section class="box"><h2>個人ごとの月間実績・達成率</h2><p class="jsub">担当者ごとの今月の獲得数と、目標に対する達成率です</p>
+<section class="box"><h2><span class="hic" aria-hidden="true">👤</span>個人ごとの月間実績・達成率</h2><p class="jsub">担当者ごとの今月の獲得数と、目標に対する達成率です</p>
 <div class="tw"><table>
 <thead><tr id="j-thead"></tr></thead>
 <tbody id="j-agg"></tbody><tfoot id="j-aggfoot"></tfoot></table></div>
@@ -432,7 +453,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <p class="note">達成率は、この月に報告された記録を合計し、月間目標で割った値です。月間目標は管理者が設定します。</p>
 </section>
 
-<section class="box"><h2>キャッチ・着座・成約の実績</h2><p class="jsub">担当者ごとの今月のキャッチ・着座・成約件数と、着座率・成約率です（実績報告ページの別枠から記録されたものです）</p>
+<section class="box"><h2><span class="hic" aria-hidden="true">🔁</span>キャッチ・着座・成約の実績</h2><p class="jsub">担当者ごとの今月のキャッチ・着座・成約件数と、着座率・成約率です（実績報告ページの別枠から記録されたものです）</p>
+<div class="funnel" id="f-funnel"></div>
 <div class="tw"><table>
 <thead><tr><th>担当者</th><th class="sub">キャッチ</th><th class="sub">着座</th><th class="sub">成約</th><th class="sub">着座率</th><th class="sub">成約率</th></tr></thead>
 <tbody id="f-agg"></tbody><tfoot id="f-aggfoot"></tfoot></table></div>
@@ -441,7 +463,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <p class="note">着座率はキャッチ数に対する着座数の割合、成約率は着座数に対する成約数の割合です。</p>
 </section>
 
-<section class="box"><h2>獲得の記録一覧</h2><p class="jsub">1件ずつの記録です。押し間違いはここから取り消せます</p>
+<section class="box"><h2><span class="hic" aria-hidden="true">🧾</span>獲得の記録一覧</h2><p class="jsub">1件ずつの記録です。押し間違いはここから取り消せます</p>
 <div class="tw"><table>
 <thead><tr><th>日時</th><th>担当者</th><th>種別</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
@@ -863,6 +885,16 @@ function render(){
      +'<div class="jcard-sub"><span>着座率 '+seatRate+'%</span><span>成約率 '+dealRate+'%</span></div></div>';
   }).join("");
   $("f-empty").hidden=list.length>0;
+
+  $("kpi-staff").textContent=list.length+"名";
+  $("kpi-rate").textContent=rate+"%";
+  $("kpi-seat").textContent=fSeatRate+"%";
+  $("kpi-deal").textContent=fDealRate+"%";
+  var fmax=Math.max(fsum.catch,fsum.seated,fsum.deal,1);
+  $("f-funnel").innerHTML=[["キャッチ",fsum.catch,"f0"],["着座",fsum.seated,"f1"],["成約",fsum.deal,"f2"]].map(function(row){
+    var w=row[1]>0?Math.max(6,Math.round(row[1]/fmax*100)):0;
+    return '<div class="funnel-row"><span class="funnel-label">'+row[0]+'</span><div class="funnel-track"><div class="funnel-fill '+row[2]+'" style="width:'+w+'%"></div></div><span class="funnel-val">'+yen(row[1])+'</span></div>';
+  }).join("");
 
   var seen={},o="";names.concat(events.map(function(e){return e.name})).concat(targets.map(function(t){return t.name})).forEach(function(x){if(x&&!seen[x]){seen[x]=1;o+='<option value="'+esc(x)+'">'}});
   $("j-names").innerHTML=o;
