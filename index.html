@@ -501,18 +501,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="back" data-p="home">トップへ戻る</button>
   <header>
     <h1>シフト管理</h1>
-    <div class="nav">
+    <div class="nav" style="flex-wrap:wrap">
+      <button class="nb" id="as-week-mon-prev">前の月</button><span id="as-range"></span><button class="nb" id="as-week-mon-next">次の月</button><button class="nb" id="as-week-mon-today">今月</button>
       <select id="as-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
-        <option value="1">1週目</option>
-        <option value="2">2週目</option>
-        <option value="3">3週目</option>
-        <option value="4">4週目</option>
-        <option value="5">5週目</option>
-        <option value="month">指定した月をすべて一覧表示</option>
+        <option value="">週目（すべて）</option>
+        <option value="1">1週目のみ</option>
+        <option value="2">2週目のみ</option>
+        <option value="3">3週目のみ</option>
+        <option value="4">4週目のみ</option>
+        <option value="5">5週目のみ</option>
       </select>
-      <span id="as-range"></span>
     </div>
-    <div class="wk" id="as-week-monthnav" hidden style="margin-top:8px"><button class="nb" id="as-week-mon-prev">前の月</button><button class="nb" id="as-week-mon-next">次の月</button><button class="nb" id="as-week-mon-today">今月</button></div>
   </header>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
   <div class="tw" id="as-tablewrap"><table id="as-table" class="asv"></table></div>
@@ -643,20 +642,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="btn" type="submit">ブロックを追加</button>
 </form>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">割り当ての編集</h3>
-<div class="nav">
-<button class="nb" id="as-adm-prev">前の期間</button><span id="as-adm-range"></span><button class="nb" id="as-adm-next">次の期間</button><button class="nb" id="as-adm-today">今日</button>
+<div class="wk" style="margin-bottom:10px;flex-wrap:wrap">
+<button class="nb" id="as-adm-mon-prev">前の月</button><span id="as-adm-range"></span><button class="nb" id="as-adm-mon-next">次の月</button><button class="nb" id="as-adm-mon-today">今月</button>
 <select id="as-adm-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
-<option value="">期間で表示（すべて）</option>
-<option value="month">指定した月をすべて一覧表示</option>
-<option value="1">1週目だけ一覧表示</option>
-<option value="2">2週目だけ一覧表示</option>
-<option value="3">3週目だけ一覧表示</option>
-<option value="4">4週目だけ一覧表示</option>
-<option value="5">5週目だけ一覧表示</option>
+<option value="">週目（すべて）</option>
+<option value="1">1週目のみ</option>
+<option value="2">2週目のみ</option>
+<option value="3">3週目のみ</option>
+<option value="4">4週目のみ</option>
+<option value="5">5週目のみ</option>
 </select>
 </div>
-<div class="wk" id="as-adm-monthnav" hidden style="margin-top:8px"><button class="nb" id="as-adm-mon-prev">前の月</button><button class="nb" id="as-adm-mon-next">次の月</button><button class="nb" id="as-adm-mon-today">今月</button></div>
-<div id="as-adm-empty" class="empty" hidden>店舗ブロックがまだ登録されていません。</div>
+<div id="as-adm-empty" class="empty" hidden>この条件に一致する店舗ブロックがありません。</div>
 <div class="tw" id="as-adm-tablewrap"><table id="as-adm-table" class="asv"></table></div>
 <p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。各行の「一括」ボタンを押すと、その役割の期間全体（開始日〜終了日）に同じ担当者をまとめて設定できます。「（空欄にする）」を選んで保存すると削除されます。</p>
 </div>
@@ -1282,14 +1279,14 @@ function dateList(){var a=[];for(var i=0;i<DAYS;i++)a.push(addD(winStart,i));ret
 function monthDays(cur){var y=cur.getFullYear(),m=cur.getMonth(),days=new Date(y,m+1,0).getDate(),a=[];for(var i=1;i<=days;i++)a.push(new Date(y,m,i));return a}
 function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
 function weekFilter(){return $("as-week").value}
+function asMonthMatch(b){
+  var ms=fmtD(new Date(asCursor.getFullYear(),asCursor.getMonth(),1));
+  var me=fmtD(new Date(asCursor.getFullYear(),asCursor.getMonth()+1,0));
+  return !!(b.start&&b.end&&b.start<=me&&b.end>=ms);
+}
 function visibleBlocks(){
   var wk=weekFilter();
-  if(wk==="month"){
-    var ms=fmtD(new Date(asCursor.getFullYear(),asCursor.getMonth(),1));
-    var me=fmtD(new Date(asCursor.getFullYear(),asCursor.getMonth()+1,0));
-    return blocks.filter(function(b){return b.start&&b.end&&b.start<=me&&b.end>=ms});
-  }
-  return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks;
+  return blocks.filter(function(b){return asMonthMatch(b)&&(!wk||(b.week||"")===wk)});
 }
 function weekDateList(vb){
   var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
@@ -1366,17 +1363,9 @@ function buildTable(ds,vb){
   return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
 }
 function render(){
-  var wk=weekFilter(),vb=visibleBlocks();
-  $("as-week-monthnav").hidden=wk!=="month";
-  var ds=wk==="month"?monthDays(asCursor):weekDateList(vb);
-  if(wk==="month"){
-    $("as-range").textContent=asCursor.getFullYear()+"年"+(asCursor.getMonth()+1)+"月";
-  }else if(!ds.length){
-    $("as-range").textContent=wk+"週目のブロックはまだありません";
-  }else{
-    var e=ds[ds.length-1];
-    $("as-range").textContent=wk+"週目　"+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
-  }
+  var vb=visibleBlocks();
+  var ds=monthDays(asCursor);
+  $("as-range").textContent=asCursor.getFullYear()+"年"+(asCursor.getMonth()+1)+"月";
   $("as-table").innerHTML=buildTable(ds,vb);
   $("as-empty").hidden=vb.length>0;
   renderMonthly();
@@ -1750,14 +1739,14 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     function monthDays(cur){var y=cur.getFullYear(),m=cur.getMonth(),days=new Date(y,m+1,0).getDate(),a=[];for(var i=1;i<=days;i++)a.push(new Date(y,m,i));return a}
     function parseD(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
     function weekFilter(){return $("as-adm-week").value}
+    function admMonthMatch(b){
+      var ms=fmtD(new Date(admCursor.getFullYear(),admCursor.getMonth(),1));
+      var me=fmtD(new Date(admCursor.getFullYear(),admCursor.getMonth()+1,0));
+      return !!(b.start&&b.end&&b.start<=me&&b.end>=ms);
+    }
     function visibleBlocks(){
       var wk=weekFilter();
-      if(wk==="month"){
-        var ms=fmtD(new Date(admCursor.getFullYear(),admCursor.getMonth(),1));
-        var me=fmtD(new Date(admCursor.getFullYear(),admCursor.getMonth()+1,0));
-        return blocks.filter(function(b){return b.start&&b.end&&b.start<=me&&b.end>=ms});
-      }
-      return wk?blocks.filter(function(b){return (b.week||"")===wk}):blocks;
+      return blocks.filter(function(b){return admMonthMatch(b)&&(!wk||(b.week||"")===wk)});
     }
     function weekDateList(vb){
       var s=vb.reduce(function(a,b){return !a||b.start<a?b.start:a},null);
@@ -1826,18 +1815,9 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       return "<thead>"+head+"</thead><tbody>"+body+"</tbody>";
     }
     function renderTable(){
-      var wk=weekFilter(),vb=visibleBlocks();
-      $("as-adm-monthnav").hidden=wk!=="month";
-      $("as-adm-prev").disabled=$("as-adm-next").disabled=$("as-adm-today").disabled=!!wk;
-      var ds=wk==="month"?monthDays(admCursor):(wk?weekDateList(vb):dateList());
-      if(wk==="month"){
-        $("as-adm-range").textContent=admCursor.getFullYear()+"年"+(admCursor.getMonth()+1)+"月";
-      }else if(!ds.length){
-        $("as-adm-range").textContent=wk?wk+"週目のブロックはまだありません":"";
-      }else{
-        var e=ds[ds.length-1];
-        $("as-adm-range").textContent=(wk?wk+"週目　":"")+ds[0].getFullYear()+"年"+(ds[0].getMonth()+1)+"月"+ds[0].getDate()+"日 〜 "+(e.getMonth()+1)+"月"+e.getDate()+"日";
-      }
+      var vb=visibleBlocks();
+      var ds=monthDays(admCursor);
+      $("as-adm-range").textContent=admCursor.getFullYear()+"年"+(admCursor.getMonth()+1)+"月";
       $("as-adm-table").innerHTML=buildTable(ds,vb);
       $("as-adm-empty").hidden=vb.length>0;
     }
@@ -1881,9 +1861,6 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     $("as-bl-mon-today").onclick=function(){blCursor=new Date();blCursor.setDate(1);renderLists()};
     $("as-bl-mon-all").onclick=function(){blShowAll=!blShowAll;renderLists()};
     $("as-bl-weekfilter").onchange=renderLists;
-    $("as-adm-prev").onclick=function(){winStart=addD(winStart,-7);renderTable()};
-    $("as-adm-next").onclick=function(){winStart=addD(winStart,7);renderTable()};
-    $("as-adm-today").onclick=function(){winStart=new Date();winStart.setHours(0,0,0,0);renderTable()};
     $("as-adm-week").onchange=renderTable;
     $("as-adm-mon-prev").onclick=function(){admCursor.setMonth(admCursor.getMonth()-1);renderTable()};
     $("as-adm-mon-next").onclick=function(){admCursor.setMonth(admCursor.getMonth()+1);renderTable()};
