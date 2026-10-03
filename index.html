@@ -424,6 +424,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <label style="display:block;margin-bottom:12px">週目で一覧表示（任意）
 <select id="st-week" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
 <option value="">個別の現場を選んで表示する</option>
+<option value="month">指定した月の現場をすべて一覧表示</option>
 <option value="1">1週目をすべて一覧表示</option>
 <option value="2">2週目をすべて一覧表示</option>
 <option value="3">3週目をすべて一覧表示</option>
@@ -431,6 +432,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <option value="5">5週目をすべて一覧表示</option>
 </select>
 </label>
+<div class="wk" id="st-monthnav" hidden style="margin-bottom:12px"><button class="nb" id="st-mon-prev">前の月</button><span id="st-mon-range"></span><button class="nb" id="st-mon-next">次の月</button><button class="nb" id="st-mon-today">今月</button></div>
 <label style="display:block;margin-bottom:12px">対象の現場（代理店シフト）
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
@@ -1075,6 +1077,7 @@ function blockStaff(b){
   return Object.keys(set);
 }
 var blocks=[],events=[];
+var stCursor=new Date();stCursor.setDate(1);
 function ymd2(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 var dbRef=null,userCanEdit=false,autoPosted={};
 function maybeAutoPostWeekly(){
@@ -1161,6 +1164,21 @@ function render(){
   if(curSel&&sorted.some(function(b){return b.id===curSel}))$("st-period").value=curSel;
 
   var wk=$("st-week").value;
+  $("st-monthnav").hidden=wk!=="month";
+  if(wk==="month"){
+    $("st-period").disabled=true;
+    $("st-mon-range").textContent=stCursor.getFullYear()+"年"+(stCursor.getMonth()+1)+"月";
+    var msStr=ymd2(stCursor);
+    var meEnd=new Date(stCursor.getFullYear(),stCursor.getMonth()+1,0);
+    var meStr=ymd2(meEnd);
+    var list=blocks.filter(function(b){return b.start&&b.end&&b.start<=meStr&&b.end>=msStr}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
+    if(!list.length){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-cards").innerHTML="";$("st-empty").hidden=false;return}
+    $("st-rows").innerHTML=list.map(rowFor).join("");
+    $("st-cards").innerHTML=list.map(cardFor).join("");
+    $("st-foot").innerHTML="";
+    $("st-empty").hidden=true;
+    return;
+  }
   if(wk){
     $("st-period").disabled=true;
     var list=blocks.filter(function(b){return (b.week||"")===wk}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
@@ -1182,6 +1200,9 @@ function render(){
 }
 $("st-period").onchange=render;
 $("st-week").onchange=render;
+$("st-mon-prev").onclick=function(){stCursor.setMonth(stCursor.getMonth()-1);render()};
+$("st-mon-next").onclick=function(){stCursor.setMonth(stCursor.getMonth()+1);render()};
+$("st-mon-today").onclick=function(){stCursor=new Date();stCursor.setDate(1);render()};
 render();
 claude.use("db").then(function(d){
   if(!d)return;dbRef=d;
