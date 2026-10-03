@@ -55,6 +55,7 @@ service cloud.firestore {
     match /ashiftBlocks/{id} { allow read, write: if isAllowedDomain(); }
     match /admin/{id} { allow read, write: if isAllowedDomain(); }
     match /dayoffRequests/{id} { allow read, write: if isAllowedDomain(); }
+    match /weeklyReports/{id} { allow read, write: if isAllowedDomain(); }
 
     // アクセス権限（退職者など）：書き込み・一覧の読み取りは本物の管理者
     // （adminsコレクションに登録されたUID）のみ。各自は自分のメールアドレスの

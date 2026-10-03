@@ -1075,6 +1075,53 @@ function blockStaff(b){
   return Object.keys(set);
 }
 var blocks=[],events=[];
+function ymd2(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+var dbRef=null,userCanEdit=false,autoPosted={};
+function maybeAutoPostWeekly(){
+  if(!dbRef||!userCanEdit||!blocks.length)return;
+  var todayStr=ymd2(new Date());
+  var groups={};
+  blocks.forEach(function(b){
+    if(!b.week||!b.end)return;
+    var g=groups[b.week]=groups[b.week]||{blocks:[],end:""};
+    g.blocks.push(b);
+    if(b.end>g.end)g.end=b.end;
+  });
+  var cand=null;
+  Object.keys(groups).forEach(function(wk){
+    var g=groups[wk];
+    if(!g.end||g.end>=todayStr)return;
+    if(!cand||g.end>cand.end)cand={week:wk,end:g.end,blocks:g.blocks};
+  });
+  if(!cand)return;
+  var key="w"+cand.week+"_"+cand.end;
+  if(autoPosted[key])return;
+  autoPosted[key]=true;
+  dbRef.doc("weeklyReports/"+key).get().then(function(snap){
+    if(snap.exists)return;
+    var rows=cand.blocks.map(function(b){
+      var staffArr=blockStaff(b);
+      var mnp=0,neu=0;
+      events.forEach(function(ev){
+        if(staffArr.indexOf(ev.name)<0)return;
+        var ds=ymd2(new Date(ev.ts));
+        if(ds<b.start||ds>b.end)return;
+        if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
+      });
+      var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt);
+      return {label:(b.agency?b.agency+" ／ ":"")+b.name,pc:pc};
+    }).sort(function(a,b){return b.pc-a.pc});
+    if(!rows.length)return;
+    var top=rows.slice(0,3),worst=rows[rows.length-1],showWorst=rows.length>top.length;
+    var lines=["🏆 TOP3"];
+    top.forEach(function(r,i){lines.push((i+1)+"位　"+r.label+"　達成率"+r.pc+"%")});
+    if(showWorst){lines.push("");lines.push("⚠️ ワースト1位");lines.push(worst.label+"　達成率"+worst.pc+"%")}
+    var body=lines.join("\n");
+    return dbRef.collection("notices").add({title:cand.week+"週目 現場実績 TOP3・ワースト1（自動投稿）",category:"お知らせ",body:body,posted:Date.now()}).then(function(){
+      return dbRef.doc("weeklyReports/"+key).set({week:cand.week,end:cand.end,postedAt:Date.now()});
+    });
+  }).catch(function(){});
+}
 function selectedBlock(){return blocks.filter(function(b){return b.id===$("st-period").value})[0]}
 function rowFor(b){
   var staffArr=blockStaff(b);
@@ -1137,10 +1184,11 @@ $("st-period").onchange=render;
 $("st-week").onchange=render;
 render();
 claude.use("db").then(function(d){
-  if(!d)return;
-  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
-  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
+  if(!d)return;dbRef=d;
+  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();maybeAutoPostWeekly()},function(){});
+  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();maybeAutoPostWeekly()},function(){});
 }).catch(function(){});
+claude.use("user").then(function(u){userCanEdit=!!(u&&u.canEdit());maybeAutoPostWeekly()}).catch(function(){});
 })();
 (function(){
 function $(i){return document.getElementById(i)}
