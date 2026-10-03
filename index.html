@@ -303,6 +303,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #stfm-clear{background:var(--bad);color:#fff}
 #stfm-save{background:var(--acc);color:#fff}
 
+#gtm-ov{position:fixed;inset:0;background:rgba(3,32,95,.45);display:flex;align-items:center;justify-content:center;z-index:9998;padding:16px}
+#gtm-ov[hidden]{display:none}
+#gtm-box{background:var(--panel);border-radius:10px;padding:18px;max-width:340px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#gtm-box h3{margin:0 0 4px;font-size:15px;color:var(--ink)}
+#gtm-box p.note{margin:0 0 12px;color:var(--sub);font-size:12px}
+#gtm-box input{display:block;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);margin:4px 0 12px;font:inherit}
+#gtm-box .row{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+#gtm-box .row button{border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;border:0;font-size:13px}
+#gtm-cancel{background:var(--o);color:var(--ink)}
+#gtm-save{background:var(--acc);color:#fff}
+
 .top{background:var(--bar);color:#fff;position:relative;overflow:hidden}
 .top::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(112deg,transparent 60%,rgba(255,255,255,.10) 60% 61.2%,transparent 61.2% 66%,rgba(255,255,255,.10) 66% 67.2%,transparent 67.2% 72%,rgba(255,255,255,.10) 72% 73.2%,transparent 73.2% 88%,#003f98 88%)}
 .top .in{max-width:1000px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;position:relative;z-index:1}
@@ -490,7 +501,19 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   </header>
   <div id="as-empty" class="empty" hidden>現場がまだ登録されていません。</div>
   <div class="tw" id="as-tablewrap"><table id="as-table" class="asv"></table></div>
-  <p class="note">シフトの登録・変更は管理者専用ページで行います。</p>
+  <p class="note">シフトの登録・変更は管理者専用ページで行います。現場名（🎯）をタップすると、その現場のMNP新規・ゴールドの目標値を入力できます。</p>
+  <div id="gtm-ov" hidden>
+  <div id="gtm-box" role="dialog" aria-modal="true" aria-labelledby="gtm-title">
+  <h3 id="gtm-title"></h3>
+  <p class="note" id="gtm-sub"></p>
+  <label style="display:block;font-size:13px;color:var(--sub)">MNP新規目標<input id="gtm-target" type="number" min="0" step="1" inputmode="numeric"></label>
+  <label style="display:block;font-size:13px;color:var(--sub)">ゴールド目標<input id="gtm-gold" type="number" min="0" step="1" inputmode="numeric"></label>
+  <div class="row">
+  <button type="button" id="gtm-cancel">キャンセル</button>
+  <button type="button" id="gtm-save">保存</button>
+  </div>
+  </div>
+  </div>
   <button type="button" data-p="dayoff" style="margin:16px 0;width:100%;padding:18px;font-size:18px;border-radius:10px;border:0;font-weight:700;cursor:pointer;background:#ffd9ad;color:#7a3b00">🙋 希望休を提出する</button>
   <div class="card" style="margin-top:0"><h2>スタッフ別 稼働日数（月間）</h2>
   <div class="nav">
@@ -1218,6 +1241,7 @@ var WD=["日","月","火","水","木","金","土"];
 var DAYS=14;
 var ROLES=[["dir","ディレクター"],["c1","クローザー"],["c2","クローザー"],["c3","クローザー"],["c4","クローザー"],["c5","クローザー"],["c6","クローザー"],["c7","クローザー"],["c8","クローザー"],["c9","クローザー"]];
 var agencies=[],blocks=[];
+var dbRef2=null;
 var winStart=new Date();winStart.setHours(0,0,0,0);
 function fmtD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function addD(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -1259,7 +1283,7 @@ function siteRowCells(b,ds,kind,agColor){
     if(!inRange(b,dstr)){out+='<td class="out"></td>';i++;continue}
     if(kind==="header"){
       var span=0;while(i+span<ds.length&&inRange(b,fmtD(ds[i+span])))span++;
-      out+='<td class="site" colspan="'+span+'" style="background:'+hexA(agColor,"22")+';color:'+agColor+'">'+esc(b.name)+"</td>";
+      out+='<td class="site" colspan="'+span+'" data-goaledit="'+esc(b.id)+'" style="background:'+hexA(agColor,"22")+';color:'+agColor+';cursor:pointer" title="タップして目標（MNP新規・ゴールド）を設定">'+esc(b.name)+' <span aria-hidden="true" style="opacity:.75">🎯</span></td>';
       i+=span;
     }else{
       var val=(b.cells&&b.cells[kind]&&b.cells[kind][dstr])||"";
@@ -1359,11 +1383,37 @@ $("as-mon-today").onclick=function(){monCursor=new Date();monCursor.setDate(1);r
 render();
 claude.use("db").then(function(d){
   if(!d)return;
+  dbRef2=d;
   d.collection("ashiftAgencies").onSnapshot(function(sn){agencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
   d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render()},function(){});
   d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});render()},function(){});
   d.collection("staffCompanies").onSnapshot(function(sn){staffCompanies=sn.docs.map(function(x){var v=x.data();return{name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order}).map(function(c){return c.name});render()},function(){});
 }).catch(function(){});
+function openGoalModal(bl){
+  $("gtm-ov").dataset.block=bl.id;
+  $("gtm-title").textContent=(bl.agency?bl.agency+" ／ ":"")+bl.name;
+  $("gtm-sub").textContent=bl.start+" 〜 "+bl.end+"の目標を設定します。";
+  $("gtm-target").value=(Number(bl.mnpTarget)||0)+(Number(bl.newTarget)||0);
+  $("gtm-gold").value=Number(bl.goldTarget)||0;
+  $("gtm-ov").hidden=false;
+}
+function closeGoalModal(){$("gtm-ov").hidden=true}
+$("as-table").onclick=function(ev){
+  var c=ev.target.closest("[data-goaledit]");
+  if(!c)return;
+  var bid=c.dataset.goaledit,bl=blocks.filter(function(x){return x.id===bid})[0];
+  if(!bl)return;
+  openGoalModal(bl);
+};
+$("gtm-cancel").onclick=closeGoalModal;
+$("gtm-ov").onclick=function(ev){if(ev.target.id==="gtm-ov")closeGoalModal()};
+$("gtm-save").onclick=function(){
+  var bid=$("gtm-ov").dataset.block;
+  if(!bid||!dbRef2)return;
+  var mt=Math.max(0,Math.floor(Number($("gtm-target").value)||0));
+  var gt=Math.max(0,Math.floor(Number($("gtm-gold").value)||0));
+  dbRef2.doc("ashiftBlocks/"+bid).update({mnpTarget:mt,newTarget:0,goldTarget:gt}).then(closeGoalModal).catch(function(){alert("保存に失敗しました。通信状態を確認して、もう一度お試しください。")});
+};
 })();
 
 (function(){
