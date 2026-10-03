@@ -463,19 +463,24 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 </div>
 
 <section class="box"><h2><span class="hic" aria-hidden="true">🏢</span>現場ごとの期間別達成率</h2><p class="jsub">MNP新規（合算）とゴールドの実績で、現場の進み具合を確認します</p>
-<label style="display:block;margin-bottom:12px">週目で一覧表示（任意）
-<select id="st-week" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
+<label style="display:block;margin-bottom:12px">表示方法
+<select id="st-mode" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
 <option value="">個別の現場を選んで表示する</option>
-<option value="month">指定した月の現場をすべて一覧表示</option>
-<option value="1">1週目をすべて一覧表示</option>
-<option value="2">2週目をすべて一覧表示</option>
-<option value="3">3週目をすべて一覧表示</option>
-<option value="4">4週目をすべて一覧表示</option>
-<option value="5">5週目をすべて一覧表示</option>
+<option value="list">複数の現場をまとめて一覧表示する</option>
 </select>
 </label>
-<div class="wk" id="st-monthnav" hidden style="margin-bottom:12px"><button class="nb" id="st-mon-prev">前の月</button><span id="st-mon-range"></span><button class="nb" id="st-mon-next">次の月</button><button class="nb" id="st-mon-today">今月</button></div>
-<label style="display:block;margin-bottom:12px">対象の現場（代理店シフト）
+<div class="wk" id="st-listcontrols" hidden style="margin-bottom:12px;flex-wrap:wrap">
+<button class="nb" id="st-mon-prev">前の月</button><span id="st-mon-range"></span><button class="nb" id="st-mon-next">次の月</button><button class="nb" id="st-mon-today">今月</button>
+<select id="st-week" style="font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+<option value="">週目（すべて）</option>
+<option value="1">1週目のみ</option>
+<option value="2">2週目のみ</option>
+<option value="3">3週目のみ</option>
+<option value="4">4週目のみ</option>
+<option value="5">5週目のみ</option>
+</select>
+</div>
+<label id="st-period-wrap" style="display:block;margin-bottom:12px">対象の現場（代理店シフト）
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
 <div class="tw"><table>
@@ -1257,21 +1262,24 @@ function cardFor(b){
    +'<div class="jcard-row"><span>MNP新規</span>'+prog(mng,mnt)+'</div>'
    +'<div class="jcard-row"><span>ゴールド</span>'+prog(g2,gt2)+'</div></div>';
 }
+function stMonthMatch(b){
+  var ms=ymd2(new Date(stCursor.getFullYear(),stCursor.getMonth(),1));
+  var me=ymd2(new Date(stCursor.getFullYear(),stCursor.getMonth()+1,0));
+  return !!(b.start&&b.end&&b.start<=me&&b.end>=ms);
+}
 function render(){
   var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
   var curSel=$("st-period").value;
   $("st-period").innerHTML=sorted.length?sorted.map(function(b){return '<option value="'+esc(b.id)+'">'+esc(blockLabel(b))+'</option>'}).join(""):'<option value="">現場（シフト）が未登録です</option>';
   if(curSel&&sorted.some(function(b){return b.id===curSel}))$("st-period").value=curSel;
 
-  var wk=$("st-week").value;
-  $("st-monthnav").hidden=wk!=="month";
-  if(wk==="month"){
-    $("st-period").disabled=true;
+  var mode=$("st-mode").value;
+  $("st-listcontrols").hidden=mode!=="list";
+  $("st-period-wrap").hidden=mode==="list";
+  if(mode==="list"){
     $("st-mon-range").textContent=stCursor.getFullYear()+"年"+(stCursor.getMonth()+1)+"月";
-    var msStr=ymd2(stCursor);
-    var meEnd=new Date(stCursor.getFullYear(),stCursor.getMonth()+1,0);
-    var meStr=ymd2(meEnd);
-    var list=blocks.filter(function(b){return b.start&&b.end&&b.start<=meStr&&b.end>=msStr}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
+    var wk=$("st-week").value;
+    var list=blocks.filter(function(b){return stMonthMatch(b)&&(!wk||(b.week||"")===wk)}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
     if(!list.length){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-cards").innerHTML="";$("st-empty").hidden=false;return}
     $("st-rows").innerHTML=list.map(rowFor).join("");
     $("st-cards").innerHTML=list.map(cardFor).join("");
@@ -1279,17 +1287,6 @@ function render(){
     $("st-empty").hidden=true;
     return;
   }
-  if(wk){
-    $("st-period").disabled=true;
-    var list=blocks.filter(function(b){return (b.week||"")===wk}).sort(function(a,b){return (a.start||"").localeCompare(b.start||"")});
-    if(!list.length){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-cards").innerHTML="";$("st-empty").hidden=false;return}
-    $("st-rows").innerHTML=list.map(rowFor).join("");
-    $("st-cards").innerHTML=list.map(cardFor).join("");
-    $("st-foot").innerHTML="";
-    $("st-empty").hidden=true;
-    return;
-  }
-  $("st-period").disabled=false;
 
   var b=selectedBlock();
   if(!b){$("st-rows").innerHTML="";$("st-foot").innerHTML="";$("st-cards").innerHTML="";$("st-empty").hidden=false;return}
@@ -1299,6 +1296,7 @@ function render(){
   $("st-empty").hidden=true;
 }
 $("st-period").onchange=render;
+$("st-mode").onchange=render;
 $("st-week").onchange=render;
 $("st-mon-prev").onclick=function(){stCursor.setMonth(stCursor.getMonth()-1);render()};
 $("st-mon-next").onclick=function(){stCursor.setMonth(stCursor.getMonth()+1);render()};
