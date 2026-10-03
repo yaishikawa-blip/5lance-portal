@@ -315,16 +315,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #notice .item .att a:hover{text-decoration:underline}
 #notice #nz-name-card{padding:12px 16px}
 #notice #nz-name-search{width:100%;box-sizing:border-box;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
-#notice .n-confirm{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-#notice .n-confirm-btn{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:7px 16px;font-weight:700;cursor:pointer;font-size:13px}
-#notice .n-confirm-btn:disabled{opacity:.6;cursor:default}
-#notice .n-confirm-list{color:var(--sub);font-size:12.5px}
-#notice .n-confirm-stamps{display:flex;flex-wrap:wrap;gap:8px 10px}
-#notice .n-seal{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 6px;border-radius:50%;border:2.5px solid var(--bad);color:var(--bad);font-size:13px;font-weight:800;background:var(--panel);box-sizing:border-box;letter-spacing:.02em}
-#notice .n-seal.me{background:var(--badbg)}
-#notice .n-seal:nth-child(3n+1){transform:rotate(-6deg)}
-#notice .n-seal:nth-child(3n+2){transform:rotate(4deg)}
-#notice .n-seal:nth-child(3n){transform:rotate(-2deg)}
 .empty2{color:var(--sub);text-align:center;padding:16px 0}
 #toast-wrap{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:100%;padding:0 12px}
 .toast{background:var(--navy);color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:700;box-shadow:0 8px 20px -6px rgba(0,0,0,.35);max-width:360px;text-align:center;animation:toastin .2s ease}
@@ -793,6 +783,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button type="button" class="tile" data-adm="adm-targets" style="--tc:var(--acc)"><span class="ic">🎯</span><b>月間目標の設定</b><span>担当者ごとのMNP・新規（通常）目標</span></button>
 <button type="button" class="tile" data-adm="adm-ashift" style="--tc:var(--et)"><span class="ic">🏢</span><b>代理店シフト管理</b><span>現場・稼働者・目標の一元管理</span></button>
 <button type="button" class="tile" data-adm="adm-agency" style="--tc:var(--sat)"><span class="ic">📈</span><b>代理店別 月間達成率</b><span>代理店ごとの月間の達成率を確認</span></button>
+<button type="button" class="tile" data-adm="adm-noticelog" style="--tc:var(--et)"><span class="ic">👁️</span><b>お知らせ閲覧ログ</b><span>誰が見たかを自動で記録・確認</span></button>
 <button type="button" class="tile" data-adm="adm-staff" style="--tc:var(--lt)"><span class="ic">👥</span><b>スタッフ一覧</b><span>実績報告用の名前・所属会社</span></button>
 <button type="button" class="tile" data-adm="adm-access" style="--tc:var(--bad)"><span class="ic">🚫</span><b>アクセス権限</b><span>退職者などの利用停止</span></button>
 <button type="button" class="tile" data-adm="adm-logs" style="--tc:var(--sat)"><span class="ic">📜</span><b>アクセスログ</b><span>誰がいつ利用したか</span></button>
@@ -935,6 +926,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="do-adm-missing" class="do-missing"></div>
 </div>
 </section>
+<section class="adm-page" id="adm-noticelog" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
+<div class="card"><h2>お知らせ閲覧ログ</h2>
+<p class="note" style="margin-top:0">スタッフが「お知らせ」ページを開くと、名前を選択済みであれば自動で閲覧が記録されます（ボタンの操作は不要です）。お知らせを選んで、誰が見たか・まだ見ていないかを確認できます。</p>
+<div class="row"><select id="nl-select" style="flex:1 1 260px"></select></div>
+<div class="tw" style="margin-top:10px"><table><thead><tr><th>閲覧者</th><th>閲覧日時</th></tr></thead><tbody id="nl-rows"></tbody></table></div>
+<div id="nl-empty" class="empty" hidden>まだ誰も閲覧していません。</div>
+<h3 style="font-size:14px;margin:16px 0 6px;color:var(--sub)">未閲覧のスタッフ</h3>
+<div id="nl-missing" class="do-missing"></div>
+</div>
+</section>
 <section class="adm-page" id="adm-staff" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card"><h2>スタッフ一覧（実績報告用）</h2>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">所属会社（委託スタッフ用）</h3>
@@ -954,7 +955,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="back" data-p="home">トップへ戻る</button>
 <h1>情報共有</h1>
 <div class="card" id="nz-name-card">
-<label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px" for="nz-name-search">あなたの名前（「確認しました」に使用します）
+<label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px" for="nz-name-search">あなたの名前（一度選ぶと、お知らせを開いた記録が自動で残ります）
 <div style="position:relative">
 <input type="text" id="nz-name-search" placeholder="名前を検索..." autocomplete="off" aria-label="あなたの名前">
 <div id="nz-name-list" style="position:absolute;left:0;right:0;top:100%;margin-top:-1px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 6px 6px;max-height:220px;overflow:auto;z-index:20;display:none"></div>
@@ -2828,7 +2829,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("a-uid").textContent=fu?("ログイン中: "+fu.email+" ／ あなたのUID: "+fu.uid+"（管理者の書き込み権限が有効にならない場合は、このUIDをFirestoreのadminsコレクションに登録してください）"):"";
     }catch(e){}
   }
-  var ADM_PAGES=["adm-targets","adm-ashift","adm-agency","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-dayoff","adm-staff"];
+  var ADM_PAGES=["adm-targets","adm-ashift","adm-agency","adm-noticelog","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-dayoff","adm-staff"];
   function showAdmPage(id){
     $("adm-menu").hidden=(id!=="menu");
     ADM_PAGES.forEach(function(p){$(p).hidden=(p!==id)});
@@ -3089,6 +3090,29 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     db.collection("ashiftBlocks").onSnapshot(function(sn){agBlocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderAgency()},function(){});
     db.collection("events").onSnapshot(function(sn){agEvents=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderAgency()},function(){});
   })();
+  (function(){
+    var nlNotices=[],nlReads=[],nlStaff=[];
+    function fmtNl(t){var d=new Date(t);return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+    function renderNlSelect(){
+      var cur=$("nl-select").value;
+      $("nl-select").innerHTML=nlNotices.length?nlNotices.map(function(v){return '<option value="'+esc5(v.id)+'">'+esc5(fmtNl(v.posted||0))+' '+esc5(v.title||"")+'</option>'}).join(""):'<option value="">お知らせがありません</option>';
+      if(cur&&nlNotices.some(function(v){return v.id===cur}))$("nl-select").value=cur;
+      renderNlDetail();
+    }
+    function renderNlDetail(){
+      var id=$("nl-select").value;
+      var reads=nlReads.filter(function(r){return r.noticeId===id}).sort(function(a,b){return (b.viewedAt||0)-(a.viewedAt||0)});
+      $("nl-rows").innerHTML=reads.map(function(r){return '<tr><td>'+esc5(r.name||"")+'</td><td>'+esc5(fmtNl(r.viewedAt||0))+'</td></tr>'}).join("");
+      $("nl-empty").hidden=!id||reads.length>0;
+      var seen={};reads.forEach(function(r){seen[r.name]=true});
+      var missing=nlStaff.filter(function(n){return !seen[n]});
+      $("nl-missing").textContent=!id?"":(missing.length?missing.join("、"):"全員が閲覧済みです");
+    }
+    $("nl-select").onchange=renderNlDetail;
+    db.collection("notices").orderBy("posted","desc").limit(50).onSnapshot(function(sn){nlNotices=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderNlSelect()},function(){});
+    db.collection("noticeReads").onSnapshot(function(sn){nlReads=sn.docs.map(function(x){return x.data()});renderNlDetail()},function(){});
+    db.collection("staff").onSnapshot(function(sn){nlStaff=[];sn.docs.forEach(function(x){var v=x.data();if(v.name)nlStaff.push(v.name)});nlStaff.sort();renderNlDetail()},function(){});
+  })();
 }).catch(function(){});
 })();
 (function(){
@@ -3117,16 +3141,6 @@ function rebuildReads(){
     if(readsByNotice[r.noticeId].indexOf(r.name)<0)readsByNotice[r.noticeId].push(r.name);
   });
 }
-function confirmHTML(v){
-  var names=(readsByNotice[v.id]||[]).slice().sort();
-  var mine=myName&&names.indexOf(myName)>-1;
-  var btn=mine?"":'<button type="button" class="n-confirm-btn" data-confirm="'+esc(v.id)+'">確認しました。</button>';
-  var stamps=names.length?'<div class="n-confirm-stamps">'+names.map(function(n){
-    return '<span class="n-seal'+(n===myName?" me":"")+'" title="'+esc(n)+'">'+esc(familyName(n))+'</span>';
-  }).join("")+'</div>':'';
-  var countTxt=names.length?'確認済み '+names.length+'名':'まだ確認した人はいません。';
-  return '<div class="n-confirm">'+btn+stamps+'<div class="n-confirm-list">'+countTxt+'</div></div>';
-}
 function attHTML(v){
   if(!v.attUrl)return "";
   if((v.attType||"").indexOf("image/")===0)return '<div class="att"><img src="'+esc(v.attUrl)+'" alt="添付画像"></div>';
@@ -3139,7 +3153,7 @@ function renderList(){
   var items=curCat?allItems.filter(function(v){return v.category===curCat}):allItems;
   $("n-list").innerHTML=items.length?items.map(function(v){
     return '<div class="card item">'+(window.__noticeAdmin?'<button class="del" data-id="'+esc(v.id)+'" aria-label="削除">削除</button>':"")
-     +(v.category?'<span class="cat">'+esc(v.category)+'</span>':"")+'<h3><span class="n-ic" aria-hidden="true">'+catIcon(v.category)+'</span>'+esc(v.title||"")+'</h3><small>'+fmt(v.posted||0)+'</small><p>'+esc(v.body||"")+'</p>'+attHTML(v)+confirmHTML(v)+'</div>'}).join(""):'<div class="empty2">お知らせはまだありません。</div>';
+     +(v.category?'<span class="cat">'+esc(v.category)+'</span>':"")+'<h3><span class="n-ic" aria-hidden="true">'+catIcon(v.category)+'</span>'+esc(v.title||"")+'</h3><small>'+fmt(v.posted||0)+'</small><p>'+esc(v.body||"")+'</p>'+attHTML(v)+'</div>'}).join(""):'<div class="empty2">お知らせはまだありません。</div>';
 }
 $("n-cats").onclick=function(ev){
   var b=ev.target.closest("[data-cat]");if(!b)return;
@@ -3168,6 +3182,16 @@ Promise.all([claude.use("db"),claude.use("user"),claude.use("assets")]).then(fun
     $("nz-name-search").value=n;
     $("nz-name-list").style.display="none";
     renderList();
+    maybeLogViews();
+  }
+  function maybeLogViews(){
+    if(!myName||!allItems.length)return;
+    allItems.forEach(function(v){
+      var seen=readsByNotice[v.id];
+      if(seen&&seen.indexOf(myName)>-1)return;
+      var nid=v.id;
+      db.doc("noticeReads/"+nid+"_"+encodeURIComponent(myName)).set({noticeId:nid,name:myName,viewedAt:Date.now()}).catch(function(){});
+    });
   }
   function renderMyNameList(filter){
     var f=(filter||"").trim();
@@ -3193,11 +3217,13 @@ Promise.all([claude.use("db"),claude.use("user"),claude.use("assets")]).then(fun
     allReads=sn.docs.map(function(x){return x.data()});
     rebuildReads();
     renderList();
+    maybeLogViews();
   },function(){});
   db.collection("notices").orderBy("posted","desc").limit(50).onSnapshot(function(sn){
     allItems=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});
     renderList();
     $("h-list").innerHTML=allItems.length?allItems.slice(0,15).map(function(v){return '<li><span>'+esc(v.title||"")+'</span><small>'+fmt(v.posted||0)+'</small></li>'}).join(""):'<li class="empty2">お知らせはまだありません。</li>';
+    maybeLogViews();
   },function(){});
   $("n-post").onclick=function(){
     var t=$("n-title").value.trim(),b=$("n-body").value.trim(),cat=$("n-cat-input").value;
@@ -3215,14 +3241,9 @@ Promise.all([claude.use("db"),claude.use("user"),claude.use("assets")]).then(fun
   };
   $("n-list").onclick=function(e){
     var b=e.target.closest(".del");
-    if(b){if(!confirm("このお知らせを削除しますか？"))return;db.doc("notices/"+b.dataset.id).delete().catch(function(){alert("削除できませんでした。")});return}
-    var c=e.target.closest("[data-confirm]");
-    if(c){
-      if(!myName){$("nz-name-search").focus();alert("先に「あなたの名前」を選択してください。");return}
-      var nid=c.dataset.confirm;
-      c.disabled=true;
-      db.doc("noticeReads/"+nid+"_"+encodeURIComponent(myName)).set({noticeId:nid,name:myName,confirmedAt:Date.now()}).catch(function(){alert("記録できませんでした。");c.disabled=false});
-    }
+    if(!b)return;
+    if(!confirm("このお知らせを削除しますか？"))return;
+    db.doc("notices/"+b.dataset.id).delete().catch(function(){alert("削除できませんでした。")});
   };
 }).catch(function(){});
 })();
