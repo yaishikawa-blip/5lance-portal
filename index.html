@@ -151,6 +151,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #admin .nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 #admin .nav span{min-width:150px;text-align:center;font-weight:700}
 #admin .nb{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;color:var(--ink)}
+#adm-agency .ag-rate{font-weight:800}
+#adm-agency .ag-rate.ok{color:var(--acc)}
+#adm-agency .ag-rate.mid{color:var(--warn)}
+#adm-agency .ag-rate.low{color:var(--bad)}
 #admin .sgrid .tw{overflow-x:auto}
 #admin .sgrid table{border-collapse:collapse;width:100%;min-width:640px}
 #admin .sgrid th,#admin .sgrid td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
@@ -788,6 +792,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tiles">
 <button type="button" class="tile" data-adm="adm-targets" style="--tc:var(--acc)"><span class="ic">🎯</span><b>月間目標の設定</b><span>担当者ごとのMNP・新規（通常）目標</span></button>
 <button type="button" class="tile" data-adm="adm-ashift" style="--tc:var(--et)"><span class="ic">🏢</span><b>代理店シフト管理</b><span>現場・稼働者・目標の一元管理</span></button>
+<button type="button" class="tile" data-adm="adm-agency" style="--tc:var(--sat)"><span class="ic">📈</span><b>代理店別 月間達成率</b><span>代理店ごとの月間の達成率を確認</span></button>
 <button type="button" class="tile" data-adm="adm-staff" style="--tc:var(--lt)"><span class="ic">👥</span><b>スタッフ一覧</b><span>実績報告用の名前・所属会社</span></button>
 <button type="button" class="tile" data-adm="adm-access" style="--tc:var(--bad)"><span class="ic">🚫</span><b>アクセス権限</b><span>退職者などの利用停止</span></button>
 <button type="button" class="tile" data-adm="adm-logs" style="--tc:var(--sat)"><span class="ic">📜</span><b>アクセスログ</b><span>誰がいつ利用したか</span></button>
@@ -863,6 +868,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="as-adm-empty" class="empty" hidden>この条件に一致する店舗ブロックがありません。</div>
 <div class="tw" id="as-adm-tablewrap"><table id="as-adm-table" class="asv"></table></div>
 <p class="note">マスをクリックすると、スタッフ一覧から担当者を選べます。各行の「一括」ボタンを押すと、その役割の期間全体（開始日〜終了日）に同じ担当者をまとめて設定できます。「（空欄にする）」を選んで保存すると削除されます。</p>
+</div>
+</section>
+<section class="adm-page" id="adm-agency" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
+<div class="card"><h2>代理店別 月間達成率</h2>
+<p class="note" style="margin-top:0">その月に重なっている現場（代理店シフト）を代理店ごとに合算し、目標に対する達成率を表示します。現場の目標は稼働日数で日割りし、表示中の月に含まれる日数分だけを集計しています。</p>
+<div class="nav">
+<button class="nb" id="ag-mon-prev">前の月</button><span id="ag-mon-range"></span><button class="nb" id="ag-mon-next">次の月</button><button class="nb" id="ag-mon-today">今月</button>
+</div>
+<div class="tw"><table><thead><tr><th>代理店</th><th>現場数</th><th>MNP新規</th><th>ゴールド</th><th>総合達成率</th></tr></thead><tbody id="ag-rows"></tbody><tfoot id="ag-foot"></tfoot></table></div>
+<div id="ag-empty" class="empty" hidden>この月に重なる代理店シフトのデータはまだありません。</div>
 </div>
 </section>
 <section class="adm-page" id="adm-memo" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
@@ -2813,7 +2828,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       $("a-uid").textContent=fu?("ログイン中: "+fu.email+" ／ あなたのUID: "+fu.uid+"（管理者の書き込み権限が有効にならない場合は、このUIDをFirestoreのadminsコレクションに登録してください）"):"";
     }catch(e){}
   }
-  var ADM_PAGES=["adm-targets","adm-ashift","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-dayoff","adm-staff"];
+  var ADM_PAGES=["adm-targets","adm-ashift","adm-agency","adm-memo","adm-cleanup","adm-export","adm-password","adm-access","adm-logs","adm-dayoff","adm-staff"];
   function showAdmPage(id){
     $("adm-menu").hidden=(id!=="menu");
     ADM_PAGES.forEach(function(p){$(p).hidden=(p!==id)});
@@ -3010,6 +3025,78 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       });
       renderDoAdm();
     },function(){});
+  })();
+  (function(){
+    var agAgencies=[],agBlocks=[],agEvents=[];
+    var agCursor=new Date();agCursor.setDate(1);
+    function ymdA(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+    function parseDA(s){var p=s.split("-");return new Date(Number(p[0]),Number(p[1])-1,Number(p[2]))}
+    function addDA(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x}
+    function plainNameA(v){var m=/^\(([^)]*)\)\s*(.*)$/.exec(v||"");return (m?m[2]:String(v||"")).trim()}
+    function blockStaffA(b){
+      var set={},cells=b.cells||{};
+      Object.keys(cells).forEach(function(role){var byDate=cells[role]||{};Object.keys(byDate).forEach(function(dk){var v=byDate[dk];if(!v)return;var nm=plainNameA(v);if(nm)set[nm]=true})});
+      return Object.keys(set);
+    }
+    function indexEventsByDateA(){
+      var idx={};
+      agEvents.forEach(function(ev){var ds=ymdA(new Date(ev.ts));(idx[ds]=idx[ds]||[]).push(ev)});
+      return idx;
+    }
+    function pctA(a,t){return t>0?Math.round(a/t*1000)/10:0}
+    function clsA(r){return r>=100?"ok":r>=80?"mid":"low"}
+    function renderAgency(){
+      var ms=ymdA(new Date(agCursor.getFullYear(),agCursor.getMonth(),1));
+      var me=ymdA(new Date(agCursor.getFullYear(),agCursor.getMonth()+1,0));
+      $("ag-mon-range").textContent=agCursor.getFullYear()+"年"+(agCursor.getMonth()+1)+"月";
+      var idx=indexEventsByDateA();
+      var relevant=agBlocks.filter(function(b){return b.start&&b.end&&b.start<=me&&b.end>=ms});
+      var agg={};
+      relevant.forEach(function(b){
+        var ag=b.agency||"（代理店未設定）";
+        agg[ag]=agg[ag]||{blockIds:{},mnt:0,mng:0,gt:0,g:0};
+        agg[ag].blockIds[b.id]=1;
+        var staffArr=blockStaffA(b);
+        var cur=parseDA(b.start),end=parseDA(b.end);
+        var totalDays=Math.round((end-cur)/86400000)+1;
+        var mntPerDay=((Number(b.mnpTarget)||0)+(Number(b.newTarget)||0))/(totalDays||1);
+        var gtPerDay=(Number(b.goldTarget)||0)/(totalDays||1);
+        while(cur<=end){
+          var ds=ymdA(cur);
+          if(ds>=ms&&ds<=me){
+            agg[ag].mnt+=mntPerDay;
+            agg[ag].gt+=gtPerDay;
+            (idx[ds]||[]).forEach(function(ev){
+              var match=ev.blockId===b.id||(staffArr.indexOf(ev.name)>-1);
+              if(!match)return;
+              if(ev.type==="mnp"||ev.type==="new")agg[ag].mng++;
+              else if(ev.type==="gcreca")agg[ag].g++;
+            });
+          }
+          cur=addDA(cur,1);
+        }
+      });
+      var names=Object.keys(agg).sort(function(a,b){
+        var oa=agAgencies.filter(function(x){return x.name===a})[0];
+        var ob=agAgencies.filter(function(x){return x.name===b})[0];
+        return (oa&&oa.order||0)-(ob&&ob.order||0);
+      });
+      $("ag-empty").hidden=names.length>0;
+      var totalMnt=0,totalMng=0,totalGt=0,totalG=0;
+      $("ag-rows").innerHTML=names.map(function(ag){
+        var a=agg[ag],gtAll=a.mnt+a.gt,gAll=a.mng+a.g,pc=pctA(gAll,gtAll);
+        totalMnt+=a.mnt;totalMng+=a.mng;totalGt+=a.gt;totalG+=a.g;
+        return '<tr><td>'+esc5(ag)+'</td><td>'+Object.keys(a.blockIds).length+'</td><td>'+a.mng+' / '+Math.round(a.mnt)+'</td><td>'+a.g+' / '+Math.round(a.gt)+'</td><td><span class="ag-rate '+clsA(pc)+'">'+pc+'%</span></td></tr>';
+      }).join("");
+      var totalPc=pctA(totalMng+totalG,totalMnt+totalGt);
+      $("ag-foot").innerHTML=names.length?'<tr><td><b>合計</b></td><td></td><td>'+totalMng+' / '+Math.round(totalMnt)+'</td><td>'+totalG+' / '+Math.round(totalGt)+'</td><td><span class="ag-rate '+clsA(totalPc)+'">'+totalPc+'%</span></td></tr>':"";
+    }
+    $("ag-mon-prev").onclick=function(){agCursor.setMonth(agCursor.getMonth()-1);renderAgency()};
+    $("ag-mon-next").onclick=function(){agCursor.setMonth(agCursor.getMonth()+1);renderAgency()};
+    $("ag-mon-today").onclick=function(){agCursor=new Date();agCursor.setDate(1);renderAgency()};
+    db.collection("ashiftAgencies").onSnapshot(function(sn){agAgencies=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderAgency()},function(){});
+    db.collection("ashiftBlocks").onSnapshot(function(sn){agBlocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderAgency()},function(){});
+    db.collection("events").onSnapshot(function(sn){agEvents=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderAgency()},function(){});
   })();
 }).catch(function(){});
 })();
