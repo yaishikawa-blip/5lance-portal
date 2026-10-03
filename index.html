@@ -418,6 +418,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki .wk{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #jisseki .wk span{font-weight:700;min-width:170px;text-align:center}
 #jisseki .nb{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer;color:var(--ink)}
+#jisseki .jtabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+#jisseki .jtab{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:8px 16px;font:inherit;font-size:13px;color:var(--sub);cursor:pointer}
+#jisseki .jtab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
 #jisseki table{min-width:780px}
 #jisseki .bar{width:80px}
 #jisseki th{line-height:1.3;white-space:normal}
@@ -524,6 +527,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="box"><small>成約率（着座→成約）</small><b id="kpi-deal">-</b></div>
 </div>
 
+<div class="jtabs" id="j-tabs">
+<button type="button" class="jtab active" data-jtab="site">🏢 現場別達成率</button>
+<button type="button" class="jtab" data-jtab="personal">👤 個人別実績</button>
+<button type="button" class="jtab" data-jtab="funnel">🔁 キャッチ〜成約</button>
+<button type="button" class="jtab" data-jtab="log">🧾 記録一覧</button>
+</div>
+
+<div id="j-view-site">
 <section class="box"><h2><span class="hic" aria-hidden="true">🏢</span>現場ごとの期間別達成率</h2><p class="jsub">MNP新規（合算）とゴールドの実績で、現場の進み具合を確認します</p>
 <label style="display:block;margin-bottom:12px">表示方法
 <select id="st-mode" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px">
@@ -552,9 +563,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="st-empty" class="empty" hidden>現場（代理店シフト）がまだ登録されていません。管理者専用ページの「代理店シフト管理」から登録してください。</div>
 <p class="note">達成率は、その現場のシフトに入っている稼働者（氏名）の、シフト期間内の記録を合計し、目標で割った値です。現場・期間・稼働者・目標はすべて管理者専用ページの「代理店シフト管理」で設定します。</p>
 </section>
+</div>
 
+<div id="j-view-months" hidden>
 <div class="wk" style="margin-top:20px"><button class="nb" id="j-prev">前の月</button><span id="j-range"></span><button class="nb" id="j-next">次の月</button><button class="nb" id="j-today">今月</button></div>
 
+<div id="j-view-personal">
 <section class="box"><h2><span class="hic" aria-hidden="true">👤</span>個人ごとの月間実績・達成率</h2><p class="jsub">担当者ごとの今月の獲得数と、目標に対する達成率です</p>
 <div class="tw"><table>
 <thead><tr id="j-thead"></tr></thead>
@@ -563,7 +577,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="j-empty" class="empty" hidden>この月の目標・報告はまだありません。下から報告してください。</div>
 <p class="note">達成率は、この月に報告された記録を合計し、月間目標で割った値です。月間目標は管理者が設定します。</p>
 </section>
+</div>
 
+<div id="j-view-funnel" hidden>
 <section class="box"><h2><span class="hic" aria-hidden="true">🔁</span>キャッチ・着座・成約の実績</h2><p class="jsub">担当者ごとの今月のキャッチ・着座・成約件数と、着座率・成約率です（実績報告ページの別枠から記録されたものです）</p>
 <div class="funnel" id="f-funnel"></div>
 <div class="tw"><table>
@@ -573,13 +589,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div id="f-empty" class="empty" hidden>この月のキャッチ・着座・成約の記録はまだありません。</div>
 <p class="note">着座率はキャッチ数に対する着座数の割合、成約率は着座数に対する成約数の割合です。</p>
 </section>
+</div>
 
+<div id="j-view-log" hidden>
 <section class="box"><h2><span class="hic" aria-hidden="true">🧾</span>獲得の記録一覧</h2><p class="jsub">1件ずつの記録です。押し間違いはここから取り消せます</p>
 <div class="tw"><table>
 <thead><tr><th>日時</th><th>担当者</th><th>種別</th><th></th></tr></thead>
 <tbody id="j-rows"></tbody></table></div>
 <div id="j-rows-empty" class="empty" hidden>この月の記録はまだありません。</div>
 </section>
+</div>
+</div>
 <datalist id="j-names"></datalist>
 <div id="arm-ov" hidden>
 <div id="arm-box" role="dialog" aria-modal="true" aria-labelledby="arm-title">
@@ -1182,6 +1202,16 @@ function updatePendingUI(){
 $("j-prev").onclick=function(){cursor.setMonth(cursor.getMonth()-1);render()};
 $("j-next").onclick=function(){cursor.setMonth(cursor.getMonth()+1);render()};
 $("j-today").onclick=function(){cursor=new Date();cursor.setDate(1);render()};
+$("j-tabs").onclick=function(ev){
+  var b=ev.target.closest("[data-jtab]");if(!b)return;
+  Array.prototype.forEach.call($("j-tabs").querySelectorAll(".jtab"),function(x){x.classList.toggle("active",x===b)});
+  var tab=b.dataset.jtab;
+  $("j-view-site").hidden=tab!=="site";
+  $("j-view-months").hidden=tab==="site";
+  $("j-view-personal").hidden=tab!=="personal";
+  $("j-view-funnel").hidden=tab!=="funnel";
+  $("j-view-log").hidden=tab!=="log";
+};
 function fail(){alert("保存できませんでした。編集権限があるか確認してください。")}
 
 function onNameChange(){
