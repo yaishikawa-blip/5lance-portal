@@ -362,6 +362,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #pastsites .ps-rate.ok{color:var(--acc)}
 #pastsites .ps-rate.mid{color:var(--warn)}
 #pastsites .ps-rate.low{color:var(--bad)}
+#dayoff #do-submit{background:#1a8754;color:#fff;border:0;border-radius:12px;padding:16px 22px;font-weight:800;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 3px 8px rgba(0,0,0,.18);width:100%;justify-content:center}
+#dayoff #do-submit span{font-size:20px}
+#dayoff #do-submit:active{background:#156a42}
 
 #arm-ov{position:fixed;inset:0;background:rgba(3,32,95,.45);display:flex;align-items:center;justify-content:center;z-index:9998;padding:16px}
 #arm-ov[hidden]{display:none}
@@ -622,6 +625,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <button class="back" data-p="home">トップへ戻る</button>
 <h1 style="font-size:22px;margin:0 0 14px">過去現場データ</h1>
 <p class="jsub" style="margin:0 0 14px">期間が終了した現場（代理店シフト）の実績・稼働者・日別獲得数・写真をまとめて確認できます</p>
+<div style="margin-bottom:12px">
+<input type="search" id="ps-search" placeholder="🔍 現場名・代理店名で検索..." autocomplete="off" aria-label="現場名で検索" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px">
+</div>
 <div class="wk" style="margin-bottom:14px;flex-wrap:wrap">
 <button class="nb" id="ps-mon-prev">前の月</button><span id="ps-mon-range"></span><button class="nb" id="ps-mon-next">次の月</button><button class="nb" id="ps-mon-today">今月</button><button class="nb" id="ps-mon-all">すべて表示</button>
 </div>
@@ -658,7 +664,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <h2 id="do-cal-title" style="margin:0 0 8px"></h2>
 <p class="note" style="margin-top:0">休みを希望する日をタップして選択してください（複数選択できます。もう一度タップすると解除されます）。</p>
 <div id="do-cal" class="do-cal"></div>
-<div class="row" style="margin-top:14px"><button class="btn" id="do-submit">この内容で提出する</button></div>
+<div class="row" style="margin-top:14px"><button class="btn" id="do-submit"><span aria-hidden="true">📤</span>この内容で提出する</button></div>
 <div class="msg" id="do-msg" role="status" style="margin-top:8px;font-size:13px"></div>
 </div>
 </div>
@@ -1717,6 +1723,8 @@ var WD=["日","月","火","水","木","金","土"];
 var blocks=[],events=[],staffCompanyMap={};
 var psCursor=new Date();psCursor.setDate(1);
 var psShowAll=true;
+var psQuery="";
+var psOpenBlockId=null;
 function familyName(n){n=String(n||"");var sp=n.split(/[\s　]+/);if(sp.length>1)return sp[0];return n.length>2?n.slice(0,2):n}
 function formatShiftName(n){var co=staffCompanyMap[n];if(!co)return n;return "("+co.slice(0,2)+")"+familyName(n)}
 function plainName(v){var m=/^\(([^)]*)\)\s*(.*)$/.exec(v||"");return (m?m[2]:String(v||"")).trim()}
@@ -1755,11 +1763,25 @@ function psRateFor(b){
   return {mnt:mnt,mng:mng,gt2:gt2,g2:g2,pc:pct(gAll,gtAll)};
 }
 function renderPsList(){
-  $("ps-mon-range").textContent=psShowAll?"すべての期間を表示中":psCursor.getFullYear()+"年"+(psCursor.getMonth()+1)+"月";
-  $("ps-mon-all").textContent=psShowAll?"月で絞り込む":"すべて表示";
-  $("ps-mon-prev").disabled=psShowAll;$("ps-mon-next").disabled=psShowAll;$("ps-mon-today").disabled=psShowAll;
-  var list=endedBlocks().filter(psMonthMatch).sort(function(a,b){return (b.end||"").localeCompare(a.end||"")});
+  var q=psQuery.trim();
+  var list;
+  if(q){
+    var ql=q.toLowerCase();
+    $("ps-mon-range").textContent="「"+q+"」の検索結果";
+    $("ps-mon-prev").disabled=true;$("ps-mon-next").disabled=true;$("ps-mon-today").disabled=true;$("ps-mon-all").disabled=true;
+    list=endedBlocks().filter(function(b){
+      var nm=((b.agency?b.agency+" ":"")+(b.name||"")).toLowerCase();
+      return nm.indexOf(ql)>-1;
+    }).sort(function(a,b){return (b.end||"").localeCompare(a.end||"")});
+  }else{
+    $("ps-mon-all").disabled=false;
+    $("ps-mon-range").textContent=psShowAll?"すべての期間を表示中":psCursor.getFullYear()+"年"+(psCursor.getMonth()+1)+"月";
+    $("ps-mon-all").textContent=psShowAll?"月で絞り込む":"すべて表示";
+    $("ps-mon-prev").disabled=psShowAll;$("ps-mon-next").disabled=psShowAll;$("ps-mon-today").disabled=psShowAll;
+    list=endedBlocks().filter(psMonthMatch).sort(function(a,b){return (b.end||"").localeCompare(a.end||"")});
+  }
   $("ps-empty").hidden=list.length>0;
+  $("ps-empty").textContent=q?"該当する現場が見つかりません。":"終了した現場データはまだありません。";
   $("ps-list").innerHTML=list.map(function(b){
     var r=psRateFor(b);
     return '<div class="ps-item" data-psopen="'+esc(b.id)+'"><div class="ps-item-main"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><small>'+esc(b.start)+' 〜 '+esc(b.end)+'</small></div><span class="ps-rate '+cls(r.pc)+'">'+r.pc+'%</span></div>';
@@ -1794,24 +1816,31 @@ function renderPsDetail(b){
 }
 function openPsDetail(bid){
   var b=blocks.filter(function(x){return x.id===bid})[0];if(!b)return;
+  psOpenBlockId=bid;
   renderPsDetail(b);
   $("ps-list-view").hidden=true;
   $("ps-detail-view").hidden=false;
+}
+function refreshOpenPsDetail(){
+  if(!psOpenBlockId||$("ps-detail-view").hidden)return;
+  var b=blocks.filter(function(x){return x.id===psOpenBlockId})[0];if(!b)return;
+  renderPsDetail(b);
 }
 $("ps-list").onclick=function(ev){
   var d=ev.target.closest("[data-psopen]");if(!d)return;
   openPsDetail(d.dataset.psopen);
 };
-$("ps-detail-back").onclick=function(){$("ps-detail-view").hidden=true;$("ps-list-view").hidden=false};
+$("ps-search").oninput=function(){psQuery=this.value;renderPsList()};
+$("ps-detail-back").onclick=function(){psOpenBlockId=null;$("ps-detail-view").hidden=true;$("ps-list-view").hidden=false};
 $("ps-mon-prev").onclick=function(){psCursor.setMonth(psCursor.getMonth()-1);renderPsList()};
 $("ps-mon-next").onclick=function(){psCursor.setMonth(psCursor.getMonth()+1);renderPsList()};
 $("ps-mon-today").onclick=function(){psCursor=new Date();psCursor.setDate(1);renderPsList()};
 $("ps-mon-all").onclick=function(){psShowAll=!psShowAll;renderPsList()};
 claude.use("db").then(function(d){
   if(!d)return;
-  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();if(!$("ps-detail-view").hidden){var bid=$("ps-list").dataset.cur}},function(){});
-  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList()},function(){});
-  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderPsList()},function(){});
+  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail()},function(){});
+  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderPsList();refreshOpenPsDetail()},function(){});
 }).catch(function(){});
 })();
 
