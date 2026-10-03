@@ -323,6 +323,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #jisseki .box + .box{margin-top:24px}
 #jisseki section.box{margin-bottom:0}
 .tapgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.finput{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:var(--ink)}
+.finput input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:19px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.finput .tapmonth{font-weight:400;color:var(--sub);text-align:center}
 .tapcard{display:flex;flex-direction:column;align-items:center;gap:4px}
 .tapbtn{width:100%;min-height:60px;border:none;border-radius:10px;background:var(--accbg);color:var(--acc);font-size:13px;font-weight:700;letter-spacing:.01em;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;user-select:none;transition:transform .08s ease}
 .tapbtn:active{transform:scale(.95)}
@@ -384,8 +388,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <p class="note">商材のボタンをタップして件数を選び（何度でもタップできます）、最後に「この内容で報告する」を押すと記録されます。押し間違えたときは各項目の「−1」で減らせます。「今月」の数字は、選んだ担当者のこれまでの記録の合計です。</p>
 </div>
 <div class="card" id="freport-card" style="margin-top:16px"><h2>キャッチ・着座・成約を記録する</h2>
-<p class="note" style="margin:0 0 10px">担当者は上の欄で選んだ方と同じです。こちらは商材とは別に記録されます。</p>
-<div class="tapgrid" id="f-taps"></div>
+<p class="note" style="margin:0 0 10px">担当者は上の欄で選んだ方と同じです。こちらは商材とは別に、件数を入力して記録します。</p>
+<div class="fgrid" id="f-inputs"></div>
 <div id="f-pending" style="margin-top:14px;font-weight:700"></div>
 <button class="btn" id="f-submit" style="margin-top:10px">この内容で報告する</button>
 <div class="msg" id="f-msg" role="status"></div>
@@ -774,18 +778,21 @@ $("e-taps").innerHTML=TYPES.map(function(t,i){
    +'<div class="taprow2"><button class="tapundo" data-minus="'+t.k+'">−1</button><span class="tapmonth" data-month="'+t.k+'">今月 0件</span></div></div>';
 }).join("");
 updatePendingUI();
-$("f-taps").innerHTML=FTYPES.map(function(t){
-  return '<div class="tapcard"><button class="tapbtn" data-ftype="'+t.k+'">'+esc(t.l)+'<span class="tapcount" data-fpending="'+t.k+'">0</span></button>'
-   +'<div class="taprow2"><button class="tapundo" data-fminus="'+t.k+'">−1</button><span class="tapmonth" data-fmonth="'+t.k+'">今月 0件</span></div></div>';
+$("f-inputs").innerHTML=FTYPES.map(function(t){
+  return '<label class="finput">'+esc(t.l)+'<input type="number" min="0" step="1" inputmode="numeric" pattern="[0-9]*" data-finput="'+t.k+'" value=""><span class="tapmonth" data-fmonth="'+t.k+'">今月 0件</span></label>';
 }).join("");
 function updateFPendingUI(){
   var total=0;
-  FTYPES.forEach(function(t){
-    var v=fpending[t.k]||0;total+=v;
-    var el=document.querySelector('[data-fpending="'+t.k+'"]');if(el)el.textContent=v;
-  });
+  FTYPES.forEach(function(t){total+=fpending[t.k]||0});
   $("f-pending").textContent=total>0?"選択中: 合計"+total+"件":"";
   $("f-submit").disabled=total===0;
+}
+function resetFInputs(){
+  FTYPES.forEach(function(t){
+    fpending[t.k]=0;
+    var el=document.querySelector('[data-finput="'+t.k+'"]');if(el)el.value="";
+  });
+  updateFPendingUI();
 }
 updateFPendingUI();
 
@@ -905,8 +912,7 @@ function fail(){alert("保存できませんでした。編集権限があるか
 function onNameChange(){
   TYPES.forEach(function(t){pending[t.k]=0});
   updatePendingUI();
-  FTYPES.forEach(function(t){fpending[t.k]=0});
-  updateFPendingUI();
+  resetFInputs();
   try{localStorage.setItem("jisseki-last-name",$("e-name").value)}catch(e){}
   renderCounts();
   renderFCounts();
@@ -973,10 +979,11 @@ $("e-submit").onclick=function(){
   }
   next(0);
 };
-$("f-taps").onclick=function(ev){
-  var b=ev.target.closest(".tapbtn"),m=ev.target.closest(".tapundo");
-  if(b){fpending[b.dataset.ftype]=(fpending[b.dataset.ftype]||0)+1;updateFPendingUI();return}
-  if(m){var k=m.dataset.fminus;if(fpending[k]>0){fpending[k]--;updateFPendingUI()}return}
+$("f-inputs").oninput=function(ev){
+  var el=ev.target.closest("input[data-finput]");if(!el)return;
+  var v=Math.max(0,Math.floor(Number(el.value)||0));
+  fpending[el.dataset.finput]=v;
+  updateFPendingUI();
 };
 $("f-submit").onclick=function(){
   var n=selectedName();
@@ -984,14 +991,13 @@ $("f-submit").onclick=function(){
   if(!db){$("f-msg").textContent="読み込み中です。少し待ってから押してください。";return}
   var jobs=[];
   FTYPES.forEach(function(t){var q=fpending[t.k]||0;for(var i=0;i<q;i++)jobs.push(t.k)});
-  if(!jobs.length){$("f-msg").textContent="記録する項目を選んでください。";return}
+  if(!jobs.length){$("f-msg").textContent="件数を入力してください。";return}
   $("f-submit").disabled=true;$("f-msg").textContent="記録しています…";
   function fnext(i){
     if(i>=jobs.length){
       var counts={};jobs.forEach(function(k){counts[k]=(counts[k]||0)+1});
       var summary=Object.keys(counts).map(function(k){return (TLABEL[k]||k)+counts[k]+"件"}).join("、");
-      FTYPES.forEach(function(t){fpending[t.k]=0});
-      updateFPendingUI();
+      resetFInputs();
       $("f-msg").textContent=jobs.length+"件を記録しました。";
       if(window.__reportToast)window.__reportToast(n+"さんが"+summary+"を記録しました");
       claude.use("room").then(function(room){if(room)room.emit("report",{name:n,summary:summary})}).catch(function(){});
