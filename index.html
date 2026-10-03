@@ -728,6 +728,9 @@ function prog(a,t){
 var TYPES=[
   {k:"mnp",l:"MNP",target:true},
   {k:"new",l:"新規（通常）",target:true},
+  {k:"catch",l:"キャッチ"},
+  {k:"seated",l:"着座"},
+  {k:"deal",l:"成約"},
   {k:"cellup",l:"セルアップ"},
   {k:"creca",l:"クレカ"},
   {k:"gcreca",l:"Gクレカ"},
@@ -746,7 +749,7 @@ var cursor=new Date();cursor.setDate(1);
 
 function selectedName(){return $("e-name").value}
 
-$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規（通常）</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th>総合達成率</th>';
+$("j-thead").innerHTML='<th>担当者</th><th>MNP</th><th>新規（通常）</th>'+PLAIN.map(function(t){return '<th class="sub">'+esc(t.l)+'</th>'}).join("")+'<th class="sub">着座率</th><th class="sub">成約率</th><th>総合達成率</th>';
 $("e-taps").innerHTML=TYPES.map(function(t,i){
   return '<div class="tapcard"><button class="tapbtn'+(t.target?" target":"")+'" data-type="'+t.k+'">'+esc(t.l)+'<span class="tapcount" data-pending="'+t.k+'">0</span></button>'
    +'<div class="taprow2"><button class="tapundo" data-minus="'+t.k+'">−1</button><span class="tapmonth" data-month="'+t.k+'">今月 0件</span></div></div>';
@@ -781,17 +784,26 @@ function render(){
   $("j-agg").innerHTML=list.map(function(n){
     var t=tgt[n]||{},a=agg[n]||{};
     var g=N(a.mnp)+N(a.new),gt=N(t.mnpTarget)+N(t.newTarget),p=pct(g,gt),c=cls(p);
+    var seatRate=pct(N(a.seated),N(a.catch)),dealRate=pct(N(a.deal),N(a.seated));
     return '<tr><td>'+esc(n)+'</td>'
      +'<td>'+prog(a.mnp,t.mnpTarget)+'</td>'
      +'<td>'+prog(a.new,t.newTarget)+'</td>'
      +PLAIN.map(function(pt){return '<td class="sub">'+yen(N(a[pt.k]))+'</td>'}).join("")
+     +'<td class="sub">'+seatRate+'%</td>'
+     +'<td class="sub">'+dealRate+'%</td>'
      +'<td><span class="rate '+c+'">'+p+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(p,100)+'%"></i></span></td></tr>'}).join("");
+  var seatRateSum=pct(psum.seated||0,psum.catch||0),dealRateSum=pct(psum.deal||0,psum.seated||0);
   $("j-aggfoot").innerHTML=list.length?'<tr><td>合計</td><td>'+yen(sum.m)+' / '+yen(sum.mt)+'</td><td>'+yen(sum.n)+' / '+yen(sum.nt)+'</td>'
-   +PLAIN.map(function(pt){return '<td class="sub">'+yen(psum[pt.k])+'</td>'}).join("")+'<td><b>'+rate+'%</b></td></tr>':"";
+   +PLAIN.map(function(pt){return '<td class="sub">'+yen(psum[pt.k])+'</td>'}).join("")
+   +'<td class="sub">'+seatRateSum+'%</td>'
+   +'<td class="sub">'+dealRateSum+'%</td>'
+   +'<td><b>'+rate+'%</b></td></tr>':"";
   $("j-cards").innerHTML=list.map(function(n){
     var t=tgt[n]||{},a=agg[n]||{};
     var g=N(a.mnp)+N(a.new),gt=N(t.mnpTarget)+N(t.newTarget),p=pct(g,gt),c=cls(p);
-    var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("");
+    var seatRate=pct(N(a.seated),N(a.catch)),dealRate=pct(N(a.deal),N(a.seated));
+    var subHtml=PLAIN.map(function(pt){return '<span>'+esc(pt.l)+' '+yen(N(a[pt.k]))+'</span>'}).join("")
+     +'<span>着座率 '+seatRate+'%</span><span>成約率 '+dealRate+'%</span>';
     return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc(n)+'</b><span class="rate '+c+'">'+p+'%</span></div>'
      +'<div class="jcard-row"><span>MNP</span>'+prog(a.mnp,t.mnpTarget)+'</div>'
      +'<div class="jcard-row"><span>新規（通常）</span>'+prog(a.new,t.newTarget)+'</div>'
