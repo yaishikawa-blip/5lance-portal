@@ -1151,6 +1151,9 @@ function blockStaff(b){
   Object.keys(cells).forEach(function(role){var byDate=cells[role]||{};Object.keys(byDate).forEach(function(dk){var v=byDate[dk];if(!v)return;var nm=plainName(v);if(nm)set[nm]=true})});
   return Object.keys(set);
 }
+var staffCompanyMap={};
+function familyName(n){n=String(n||"");var sp=n.split(/[\s　]+/);if(sp.length>1)return sp[0];return n.length>2?n.slice(0,2):n}
+function formatShiftName(n){var co=staffCompanyMap[n];if(!co)return n;return "("+co.slice(0,2)+")"+familyName(n)}
 var blocks=[],events=[];
 var stCursor=new Date();stCursor.setDate(1);
 function ymd2(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -1241,7 +1244,7 @@ function rowFor(b){
     if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;else if(ev.type==="gcreca")gld++;
   });
   var mnt=N(b.mnpTarget)+N(b.newTarget),mng=mnp+neu,gt2=N(b.goldTarget),g2=gld,gtAll=mnt+gt2,gAll=mng+g2,pc=pct(gAll,gtAll),c=cls(pc);
-  var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
+  var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(formatShiftName(n))+'</span>'}).join(""):'<span class="sub">未設定</span>';
   return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td style="white-space:normal">'+staffHtml+'</td>'
    +'<td>'+prog(mng,mnt)+'</td><td>'+prog(g2,gt2)+'</td>'
    +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
@@ -1256,7 +1259,7 @@ function cardFor(b){
     if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;else if(ev.type==="gcreca")gld++;
   });
   var mnt=N(b.mnpTarget)+N(b.newTarget),mng=mnp+neu,gt2=N(b.goldTarget),g2=gld,gtAll=mnt+gt2,gAll=mng+g2,pc=pct(gAll,gtAll),c=cls(pc);
-  var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
+  var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(formatShiftName(n))+'</span>'}).join(""):'<span class="sub">未設定</span>';
   return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
    +'<div class="jcard-tags">'+staffHtml+'</div>'
    +'<div class="jcard-row"><span>MNP新規</span>'+prog(mng,mnt)+'</div>'
@@ -1307,6 +1310,7 @@ claude.use("db").then(function(d){
   if(!d)return;dbRef=d;
   d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();maybeAutoPostWeekly()},function(){});
   d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();maybeAutoPostWeekly()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});render();renderHomeRanking()},function(){});
 }).catch(function(){});
 claude.use("user").then(function(u){userCanEdit=!!(u&&u.canEdit());maybeAutoPostWeekly()}).catch(function(){});
 })();
