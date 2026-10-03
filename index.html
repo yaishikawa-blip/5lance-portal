@@ -111,6 +111,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #shift .btn{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer}
 #shift .note{color:var(--sub);font-size:12px;margin:8px 0 0}
 #shift .empty{color:var(--sub);text-align:center;padding:24px 0}
+#shift tr.grp td{background:var(--accbg);color:var(--acc);font-weight:700;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
 #admin .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
 #admin .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:0}
 #admin .box small{color:var(--sub);display:block}
@@ -451,7 +452,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <div class="nav">
     <button class="nb" id="as-mon-prev">前の月</button><span id="as-mon-range"></span><button class="nb" id="as-mon-next">次の月</button><button class="nb" id="as-mon-today">今月</button>
   </div>
-  <div class="tw"><table><thead><tr><th>所属会社</th><th>スタッフ</th><th>稼働日数</th></tr></thead><tbody id="as-mon-rows"></tbody></table></div>
+  <div class="tw"><table><thead><tr><th>スタッフ</th><th>稼働日数</th></tr></thead><tbody id="as-mon-rows"></tbody></table></div>
   <div id="as-mon-empty" class="empty" hidden>この月の稼働記録はまだありません。</div>
   <p class="note">現場のシフト表に入力されている日数を、同じ人が1日に複数の現場・役割に入っていても1日分として数えています。</p>
   </div>
@@ -1133,9 +1134,15 @@ function renderMonthly(){
     if(oa!==ob)return oa-ob;
     return Object.keys(counts[b]).length-Object.keys(counts[a]).length;
   });
-  $("as-mon-rows").innerHTML=names.map(function(n){
+  var groups=[],curCo=null,curList=null;
+  names.forEach(function(n){
     var co=staffCompanyMap[n]||"";
-    return '<tr><td>'+esc(co||"－")+'</td><td>'+esc(formatShiftName(n))+'</td><td>'+Object.keys(counts[n]).length+'日</td></tr>';
+    if(co!==curCo||!curList){curCo=co;curList=[];groups.push({co:co,list:curList})}
+    curList.push(n);
+  });
+  $("as-mon-rows").innerHTML=groups.map(function(g){
+    return '<tr class="grp"><td colspan="2">'+esc(g.co||"所属なし")+'</td></tr>'
+     +g.list.map(function(n){return '<tr><td>'+esc(formatShiftName(n))+'</td><td>'+Object.keys(counts[n]).length+'日</td></tr>'}).join("");
   }).join("");
   $("as-mon-empty").hidden=names.length>0;
 }
