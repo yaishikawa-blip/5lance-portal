@@ -403,7 +403,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <select id="st-period" style="display:block;width:100%;max-width:360px;margin-top:6px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px"></select>
 </label>
 <div class="tw"><table>
-<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規（通常）</th><th>総合達成率</th></tr></thead>
+<thead><tr><th>現場</th><th>稼働者</th><th>MNP</th><th>新規（通常）</th><th class="sub">キャッチ</th><th class="sub">着座</th><th class="sub">成約</th><th class="sub">着座率</th><th class="sub">成約率</th><th>総合達成率</th></tr></thead>
 <tbody id="st-rows"></tbody><tfoot id="st-foot"></tfoot></table></div>
 <div id="st-cards" class="jcards"></div>
 <div id="st-empty" class="empty" hidden>現場（代理店シフト）がまだ登録されていません。管理者専用ページの「代理店シフト管理」から登録してください。</div>
@@ -951,36 +951,38 @@ function blockStaff(b){
 }
 var blocks=[],events=[];
 function selectedBlock(){return blocks.filter(function(b){return b.id===$("st-period").value})[0]}
-function rowFor(b){
+function countsFor(b){
   var staffArr=blockStaff(b);
-  var mnp=0,neu=0;
+  var c={mnp:0,"new":0,catch:0,seated:0,deal:0};
   events.forEach(function(ev){
     if(staffArr.indexOf(ev.name)<0)return;
     var d=new Date(ev.ts),ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
     if(ds<b.start||ds>b.end)return;
-    if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
+    if(c[ev.type]!==undefined)c[ev.type]++;
   });
-  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
+  return {staffArr:staffArr,c:c};
+}
+function rowFor(b){
+  var r=countsFor(b),staffArr=r.staffArr,c=r.c;
+  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=c.mnp+c.new,pc=pct(g,gt),cl=cls(pc);
+  var seatRate=pct(c.seated,c.catch),dealRate=pct(c.deal,c.seated);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
   return '<tr><td>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</td><td style="white-space:normal">'+staffHtml+'</td>'
-   +'<td>'+prog(mnp,mt)+'</td><td>'+prog(neu,nt)+'</td>'
-   +'<td><span class="rate '+c+'">'+pc+'%</span> <span class="bar"><i class="'+(c==="ok"?"":c)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
+   +'<td>'+prog(c.mnp,mt)+'</td><td>'+prog(c.new,nt)+'</td>'
+   +'<td class="sub">'+yen(c.catch)+'</td><td class="sub">'+yen(c.seated)+'</td><td class="sub">'+yen(c.deal)+'</td>'
+   +'<td class="sub">'+seatRate+'%</td><td class="sub">'+dealRate+'%</td>'
+   +'<td><span class="rate '+cl+'">'+pc+'%</span> <span class="bar"><i class="'+(cl==="ok"?"":cl)+'" style="width:'+Math.min(pc,100)+'%"></i></span></td></tr>';
 }
 function cardFor(b){
-  var staffArr=blockStaff(b);
-  var mnp=0,neu=0;
-  events.forEach(function(ev){
-    if(staffArr.indexOf(ev.name)<0)return;
-    var d=new Date(ev.ts),ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-    if(ds<b.start||ds>b.end)return;
-    if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;
-  });
-  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=mnp+neu,pc=pct(g,gt),c=cls(pc);
+  var r=countsFor(b),staffArr=r.staffArr,c=r.c;
+  var mt=N(b.mnpTarget),nt=N(b.newTarget),gt=mt+nt,g=c.mnp+c.new,pc=pct(g,gt),cl=cls(pc);
+  var seatRate=pct(c.seated,c.catch),dealRate=pct(c.deal,c.seated);
   var staffHtml=staffArr.length?staffArr.map(function(n){return '<span class="nametag">'+esc(n)+'</span>'}).join(""):'<span class="sub">未設定</span>';
-  return '<div class="jcard '+c+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+c+'">'+pc+'%</span></div>'
+  return '<div class="jcard '+cl+'"><div class="jcard-head"><b>'+esc((b.agency?b.agency+" ／ ":"")+b.name)+'</b><span class="rate '+cl+'">'+pc+'%</span></div>'
    +'<div class="jcard-tags">'+staffHtml+'</div>'
-   +'<div class="jcard-row"><span>MNP</span>'+prog(mnp,mt)+'</div>'
-   +'<div class="jcard-row"><span>新規（通常）</span>'+prog(neu,nt)+'</div></div>';
+   +'<div class="jcard-row"><span>MNP</span>'+prog(c.mnp,mt)+'</div>'
+   +'<div class="jcard-row"><span>新規（通常）</span>'+prog(c.new,nt)+'</div>'
+   +'<div class="jcard-sub"><span>キャッチ '+yen(c.catch)+'</span><span>着座 '+yen(c.seated)+'</span><span>成約 '+yen(c.deal)+'</span><span>着座率 '+seatRate+'%</span><span>成約率 '+dealRate+'%</span></div></div>';
 }
 function render(){
   var sorted=blocks.slice().sort(function(a,b){return (b.start||"").localeCompare(a.start||"")});
