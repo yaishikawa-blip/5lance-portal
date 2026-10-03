@@ -631,6 +631,20 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
   <div id="as-mon-empty" class="empty" hidden>この月の稼働記録はまだありません。</div>
   <p class="note">現場のシフト表に入力されている日数を、同じ人が1日に複数の現場・役割に入っていても1日分として数えています。</p>
   </div>
+  <div class="card" id="ms-card"><h2>自分のシフトを検索</h2>
+  <label style="display:block;font-size:13px;color:var(--sub);margin-bottom:4px" for="ms-name-search">名前で検索
+  <div style="position:relative">
+  <input type="text" id="ms-name-search" placeholder="名前を検索..." autocomplete="off" aria-label="名前で検索">
+  <div id="ms-name-list" style="position:absolute;left:0;right:0;top:100%;margin-top:-1px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 6px 6px;max-height:220px;overflow:auto;z-index:20;display:none"></div>
+  </div>
+  </label>
+  <div class="nav" style="margin-top:8px">
+    <button class="nb" id="ms-mon-prev">前の月</button><span id="ms-mon-range"></span><button class="nb" id="ms-mon-next">次の月</button><button class="nb" id="ms-mon-today">今月</button>
+  </div>
+  <div class="tw"><table><thead><tr><th>日付</th><th>代理店</th><th>現場</th><th>役割</th></tr></thead><tbody id="ms-rows"></tbody></table></div>
+  <div id="ms-empty" class="empty" hidden>この月の出勤予定はまだありません。</div>
+  <p class="note" id="ms-hint">名前を選択すると、その月に出勤する日・現場が一覧表示されます。</p>
+  </div>
 </section>
 <section id="pastsites" role="tabpanel" hidden>
 <div id="ps-list-view">
@@ -1604,6 +1618,7 @@ function render(){
   $("as-table").innerHTML=buildTable(ds,vb);
   $("as-empty").hidden=vb.length>0;
   renderMonthly();
+  renderMyShift();
 }
 var monCursor=new Date();monCursor.setDate(1);
 function monthDateSet(d){
@@ -1652,6 +1667,73 @@ $("as-week-mon-today").onclick=function(){asCursor=new Date();asCursor.setDate(1
 $("as-mon-prev").onclick=function(){monCursor.setMonth(monCursor.getMonth()-1);renderMonthly()};
 $("as-mon-next").onclick=function(){monCursor.setMonth(monCursor.getMonth()+1);renderMonthly()};
 $("as-mon-today").onclick=function(){monCursor=new Date();monCursor.setDate(1);renderMonthly()};
+var msCursor=new Date();msCursor.setDate(1);
+var msName="";try{msName=localStorage.getItem("shift-my-name")||""}catch(e){}
+function renderMsNameList(filter){
+  var f=(filter||"").trim();
+  var names=Object.keys(staffCompanyMap).sort(function(a,b){
+    var oa=companyOrder(staffCompanyMap[a]||""),ob=companyOrder(staffCompanyMap[b]||"");
+    if(oa!==ob)return oa-ob;
+    return a.localeCompare(b,"ja");
+  });
+  var list=f?names.filter(function(n){return n.indexOf(f)>-1}):names;
+  $("ms-name-list").innerHTML=list.length?list.map(function(n){
+    return '<div data-pick="'+esc(n)+'" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--line)">'+esc(formatShiftName(n))+'</div>';
+  }).join(""):'<div class="note" style="padding:9px 10px;margin:0">該当するスタッフがいません</div>';
+}
+function selectMsName(n){
+  msName=n;
+  try{localStorage.setItem("shift-my-name",n)}catch(e){}
+  $("ms-name-search").value=formatShiftName(n);
+  $("ms-name-list").style.display="none";
+  renderMyShift();
+}
+$("ms-name-search").oninput=function(){renderMsNameList(this.value);$("ms-name-list").style.display="block"};
+$("ms-name-search").onfocus=function(){renderMsNameList(this.value);$("ms-name-list").style.display="block"};
+$("ms-name-list").onclick=function(ev){var p=ev.target.closest("[data-pick]");if(!p)return;selectMsName(p.dataset.pick)};
+document.addEventListener("click",function(ev){
+  if(ev.target.closest("#ms-name-search")||ev.target.closest("#ms-name-list"))return;
+  $("ms-name-list").style.display="none";
+});
+function myShiftRowsFor(name,cur){
+  var ds=monthDays(cur),rows=[];
+  ds.forEach(function(d){
+    var dstr=fmtD(d);
+    blocks.forEach(function(b){
+      if(!inRange(b,dstr))return;
+      ROLES.forEach(function(r){
+        var cells=b.cells&&b.cells[r[0]];
+        if(!cells)return;
+        var v=cells[dstr];if(!v)return;
+        if(plainName(v)!==name)return;
+        rows.push({date:d,agency:b.agency,site:b.name,role:r[1]});
+      });
+    });
+  });
+  rows.sort(function(a,b){return a.date-b.date});
+  return rows;
+}
+function renderMyShift(){
+  $("ms-mon-range").textContent=msCursor.getFullYear()+"年"+(msCursor.getMonth()+1)+"月";
+  if(!msName){
+    $("ms-rows").innerHTML="";
+    $("ms-empty").hidden=true;
+    $("ms-hint").hidden=false;
+    $("ms-hint").textContent="名前を選択すると、その月に出勤する日・現場が一覧表示されます。";
+    return;
+  }
+  var rows=myShiftRowsFor(msName,msCursor);
+  $("ms-hint").hidden=rows.length===0;
+  $("ms-hint").textContent="";
+  $("ms-rows").innerHTML=rows.map(function(r){
+    return '<tr><td>'+(r.date.getMonth()+1)+'/'+r.date.getDate()+'（'+WD[r.date.getDay()]+'）</td><td>'+esc(r.agency||"")+'</td><td>'+esc(r.site||"")+'</td><td>'+esc(r.role||"")+'</td></tr>';
+  }).join("");
+  $("ms-empty").hidden=rows.length>0;
+}
+$("ms-mon-prev").onclick=function(){msCursor.setMonth(msCursor.getMonth()-1);renderMyShift()};
+$("ms-mon-next").onclick=function(){msCursor.setMonth(msCursor.getMonth()+1);renderMyShift()};
+$("ms-mon-today").onclick=function(){msCursor=new Date();msCursor.setDate(1);renderMyShift()};
+if(msName)$("ms-name-search").value=formatShiftName(msName);
 render();
 claude.use("db").then(function(d){
   if(!d)return;
