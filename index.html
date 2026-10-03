@@ -177,6 +177,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #admin .tgrid input{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0;flex:1 1 160px}
 #admin .tgrid .del{background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--ink);margin-right:4px}
 #admin .tgrid .del:hover{border-color:var(--bad);color:var(--bad)}
+#admin .adm-fold{margin-bottom:14px;border:1px solid var(--line);border-radius:8px;padding:0 12px}
+#admin .adm-fold summary{cursor:pointer;list-style:none;padding:10px 0;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:6px}
+#admin .adm-fold summary::-webkit-details-marker{display:none}
+#admin .adm-fold summary::before{content:"▶";font-size:11px;color:var(--acc);transition:transform .15s}
+#admin .adm-fold[open] summary::before{transform:rotate(90deg)}
+#admin .adm-fold[open] summary{padding-bottom:6px}
+#admin .adm-fold>*:not(summary){margin-left:2px}
+#admin .adm-fold form{margin-bottom:16px!important}
 #admin .asgrid .tw{overflow-x:auto}
 .asv{border-collapse:collapse;width:100%;min-width:900px}
 .asv th,.asv td{border:1px solid var(--line);padding:6px 8px;text-align:center;font-size:13px;white-space:nowrap}
@@ -590,10 +598,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <section class="adm-page" id="adm-ashift" hidden><button class="back" data-adm="menu">管理者メニューへ戻る</button>
 <div class="card asgrid"><h2>代理店シフト管理（現場・稼働者・目標の一元管理）</h2>
 <p class="note" style="margin-top:0">現場（店舗ブロック）の登録、シフトの日別割り当て、MNP新規・ゴールドの目標設定をここでまとめて行います。設定した内容が実績管理の「現場ごとの期間別達成率」にそのまま反映されます。</p>
-<h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">代理店</h3>
+<details class="adm-fold">
+<summary style="font-size:14px;color:var(--sub)">代理店</summary>
 <p class="note" style="margin-top:0">項目を長押しすると好きな位置にドラッグでき、シフト表の表示順（代理店ごとの並び順）を変更できます。</p>
 <div id="as-ag-list" style="margin-bottom:10px"></div>
 <form id="as-ag-f" style="display:flex;gap:8px;margin-bottom:20px"><input id="as-ag-nm" required maxlength="20" placeholder="代理店名を入力"><button class="btn" type="submit">代理店を追加</button></form>
+</details>
 <h3 style="font-size:14px;margin:0 0 6px;color:var(--sub)">店舗（現場）ブロック</h3>
 <p class="note" style="margin-top:0">既定では表示中の月に重なる現場だけを表示します。過去や先の月を見るには月を移動するか「すべて表示」を使ってください。</p>
 <div class="wk" style="margin-bottom:10px;flex-wrap:wrap">
