@@ -273,6 +273,19 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #home .card{margin-bottom:20px}
 #home .card,#notice .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
 #home h2{font-size:16px;margin:0 0 10px}
+#home .rank-sub{margin:0 0 10px;color:var(--sub);font-size:13px}
+#home .rank-h{display:block;font-size:12px;font-weight:700;color:var(--sub);margin:12px 0 4px}
+#home .rank-h:first-of-type{margin-top:0}
+#home .rank-h.bad{color:var(--bad)}
+#home .rank-list{list-style:none;margin:0;padding:0}
+#home .rank-list li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+#home .rank-list li:last-child{border-bottom:0}
+#home .rank-pos{font-weight:800;flex:none;color:var(--sub);font-size:12px;min-width:3.2em}
+#home .rank-name{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#home .rank-pct{font-weight:800;flex:none}
+#home .rank-pct.ok{color:var(--acc)}
+#home .rank-pct.mid{color:var(--warn)}
+#home .rank-pct.low{color:var(--bad)}
 #home ul{list-style:none;margin:0;padding:0}
 #home li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;justify-content:space-between}
 #home li:last-child{border-bottom:0}
@@ -400,6 +413,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <section id="home">
 <div class="card"><h2>最新のお知らせ</h2><ul id="h-list"><li class="empty2">お知らせはまだありません。</li></ul>
 <button class="more" data-p="notice">すべて見る</button> <button class="more" data-p="notice" data-open="1" hidden>お知らせを書き込む</button></div>
+<div class="card" id="rank-card" hidden><h2>🏆 当週の現場実績ランキング</h2>
+<p class="rank-sub">本日が期間に含まれる現場（代理店シフト）を、MNP新規とゴールドの合計達成率で順位付けしています。</p>
+<b class="rank-h">TOP3</b><ol class="rank-list" id="rank-top"></ol>
+<div id="rank-worst-wrap" hidden><b class="rank-h bad">ワースト3</b><ol class="rank-list" id="rank-worst"></ol></div>
+</div>
 <div class="tiles">
 <button type="button" class="tile" data-p="report" style="--tc:var(--acc)"><span class="ic">✅</span><b>実績報告</b><span>タップして記録する</span></button>
 <button class="tile" data-p="jisseki" style="--tc:var(--acc)"><span class="ic">📊</span><b>実績管理</b><span>週間の目標と獲得実績</span></button>
@@ -1177,6 +1195,36 @@ function maybeAutoPostWeekly(){
     });
   }).catch(function(){});
 }
+function rankRowHtml(r,label){
+  var c=cls(r.pc);
+  return '<li><span class="rank-pos">'+label+'</span><span class="rank-name">'+esc(r.label)+'</span><span class="rank-pct '+c+'">'+r.pc+'%</span></li>';
+}
+function renderHomeRanking(){
+  var card=$("rank-card");
+  if(!card)return;
+  var todayStr=ymd2(new Date());
+  var active=blocks.filter(function(b){return b.start&&b.end&&b.start<=todayStr&&b.end>=todayStr});
+  if(!active.length){card.hidden=true;return}
+  var rows=active.map(function(b){
+    var staffArr=blockStaff(b);
+    var mnp=0,neu=0,gld=0;
+    events.forEach(function(ev){
+      if(staffArr.indexOf(ev.name)<0)return;
+      var ds=ymd2(new Date(ev.ts));
+      if(ds<b.start||ds>b.end)return;
+      if(ev.type==="mnp")mnp++;else if(ev.type==="new")neu++;else if(ev.type==="gcreca")gld++;
+    });
+    var gt=N(b.mnpTarget)+N(b.newTarget)+N(b.goldTarget),g=mnp+neu+gld,pc=pct(g,gt);
+    return {label:(b.agency?b.agency+" ／ ":"")+b.name,pc:pc};
+  }).sort(function(a,b){return b.pc-a.pc});
+  var top=rows.slice(0,3);
+  var worstCount=Math.min(3,Math.max(0,rows.length-3));
+  var worst=worstCount?rows.slice(rows.length-worstCount).reverse():[];
+  $("rank-top").innerHTML=top.map(function(r,i){return rankRowHtml(r,(i+1)+"位")}).join("");
+  $("rank-worst-wrap").hidden=!worst.length;
+  if(worst.length)$("rank-worst").innerHTML=worst.map(function(r,i){return rankRowHtml(r,"ワースト"+(i+1))}).join("");
+  card.hidden=false;
+}
 function selectedBlock(){return blocks.filter(function(b){return b.id===$("st-period").value})[0]}
 function rowFor(b){
   var staffArr=blockStaff(b);
@@ -1256,10 +1304,11 @@ $("st-mon-prev").onclick=function(){stCursor.setMonth(stCursor.getMonth()-1);ren
 $("st-mon-next").onclick=function(){stCursor.setMonth(stCursor.getMonth()+1);render()};
 $("st-mon-today").onclick=function(){stCursor=new Date();stCursor.setDate(1);render()};
 render();
+renderHomeRanking();
 claude.use("db").then(function(d){
   if(!d)return;dbRef=d;
-  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();maybeAutoPostWeekly()},function(){});
-  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();maybeAutoPostWeekly()},function(){});
+  d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();maybeAutoPostWeekly()},function(){});
+  d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});render();renderHomeRanking();maybeAutoPostWeekly()},function(){});
 }).catch(function(){});
 claude.use("user").then(function(u){userCanEdit=!!(u&&u.canEdit());maybeAutoPostWeekly()}).catch(function(){});
 })();
