@@ -239,6 +239,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #stf-list .stf-controls{display:flex;flex-direction:column;align-items:stretch;gap:6px;font-size:13px;color:var(--sub)}
 #stf-list .stf-controls select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;box-sizing:border-box}
 #stf-list .stf-controls label{display:flex;align-items:center;gap:6px}
+#stf-list .stf-email{display:flex;gap:6px;align-items:center}
+#stf-list .stf-email input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;flex:1;min-width:0;box-sizing:border-box}
+#stf-list .stf-email .ok{background:none;border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer;color:var(--ink);font-size:12px;white-space:nowrap}
+#stf-list .stf-email .ok:hover{border-color:var(--acc);color:var(--acc)}
+#stf-list .stf-emailed{font-size:12px;color:var(--acc);font-weight:700}
 
 #gate{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:28px 20px;text-align:center;margin-top:40px}
 #gate h1{font-size:20px;margin:0 0 8px}#gate p{color:var(--sub);margin:0}
@@ -717,6 +722,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <form id="stf-f"><input id="stf-nm" required maxlength="20" placeholder="スタッフ名を入力" aria-label="スタッフ名"><select id="stf-company" aria-label="所属会社"><option value="">（会社なし）</option></select><label style="font-size:13px;color:var(--sub);white-space:nowrap"><input type="checkbox" id="stf-individual"> 個人事業主</label><button class="btn" type="submit">追加</button></form>
 <p class="note" style="margin-top:4px">委託スタッフは所属会社を選んでください（登録されていない場合は上の欄で先に会社を登録してください）。シフト表では「（会社名の先頭2文字）苗字」の形式で表示されます。個人事業主の場合は「個人事業主」にチェックすると「（個）苗字」と表示されます（実績管理ではどちらもフルネームのまま表示されます）。</p>
 <p class="note">ここで登録した名前が実績報告・月間目標設定で使用されます。</p>
+<p class="note" id="stf-email-note" style="color:var(--acc);font-weight:700">各スタッフのGoogleアカウント（メールアドレス）をここで登録できます。アクセス制限を有効にすると、登録したGoogleアカウント以外はアプリにアクセスできなくなります（現在はまだ制限は有効になっていません。登録だけが先行してできる状態です）。</p>
 </div>
 </section>
 </div>
@@ -1639,6 +1645,8 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
          +'<div class="stf-controls">'
          +'<select data-company="'+s.id+'">'+companyOptionsHTML(s.company)+'</select>'
          +'<label><input type="checkbox" data-individual="'+s.id+'"'+(s.individual?" checked":"")+'> 個人事業主</label>'
+         +'<div class="stf-email"><input type="email" data-emailinput="'+s.id+'" value="'+esc2(s.email||"")+'" placeholder="Googleアカウント（メールアドレス）" autocomplete="off"><button type="button" class="ok" data-emailsave="'+s.id+'">保存</button></div>'
+         +(s.email?'<span class="stf-emailed">✓ 登録済み：'+esc2(s.email)+'</span>':'')
          +'</div></div>';
       }).join(""):'<p class="note">スタッフが登録されていません。</p>';
     }
@@ -1647,13 +1655,41 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       if(!sel||!chk)return;
       db.doc("staff/"+id).update({company:sel.value,individual:chk.checked}).catch(function(){alert("保存できませんでした。")});
     }
+    function saveStfEmail(id){
+      var inp=document.querySelector('[data-emailinput="'+id+'"]');if(!inp)return;
+      var s=st2.filter(function(x){return x.id===id})[0];if(!s)return;
+      var raw=inp.value.trim().toLowerCase();
+      if(raw&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)){alert("メールアドレスの形式が正しくありません。");return}
+      var oldEmail=(s.email||"").toLowerCase();
+      if(raw===oldEmail)return;
+      function applyLocal(){
+        db.doc("staff/"+id).update({email:raw}).catch(function(){alert("保存できませんでした。")});
+      }
+      if(!raw){
+        if(oldEmail)db.doc("staffEmails/"+oldEmail).delete().catch(function(){});
+        applyLocal();
+        return;
+      }
+      db.doc("staffEmails/"+raw).get().then(function(snap){
+        if(snap.exists&&snap.data().staffId&&snap.data().staffId!==id){
+          alert("このGoogleアカウントはすでに別のスタッフ（"+(snap.data().name||"")+"）に登録されています。");
+          return;
+        }
+        if(oldEmail&&oldEmail!==raw)db.doc("staffEmails/"+oldEmail).delete().catch(function(){});
+        db.doc("staffEmails/"+raw).set({staffId:id,name:s.name,email:raw}).then(applyLocal).catch(function(){alert("保存できませんでした。")});
+      }).catch(function(){alert("確認できませんでした。通信状態を確認してもう一度お試しください。")});
+    }
     $("stf-list").onclick=function(ev){
       var d=ev.target.closest("[data-stfdel]");
       if(d){
         var s=st2.filter(function(x){return x.id===d.dataset.stfdel})[0];if(!s)return;
         if(!confirm(s.name+"さんを削除しますか？"))return;
+        if(s.email)db.doc("staffEmails/"+s.email.toLowerCase()).delete().catch(function(){});
         db.doc("staff/"+s.id).delete().catch(function(){alert("削除できませんでした。")});
+        return;
       }
+      var es=ev.target.closest("[data-emailsave]");
+      if(es){saveStfEmail(es.dataset.emailsave);return}
     };
     $("stf-list").onchange=function(ev){
       var sel=ev.target.closest("[data-company]");
@@ -1670,7 +1706,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
       this.reset();
     };
     db.collection("staffCompanies").onSnapshot(function(snap){companies2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,order:v.order||0}}).sort(function(a,b){return a.order-b.order});renderCo();render2()},function(){});
-    db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,company:v.company||"",individual:!!v.individual,order:v.order||0}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
+    db.collection("staff").onSnapshot(function(snap){st2=snap.docs.map(function(x){var v=x.data();return{id:x.id,name:v.name,company:v.company||"",individual:!!v.individual,order:v.order||0,email:v.email||""}}).sort(function(a,b){return a.order-b.order});render2()},function(){});
     render2();
   })();
 

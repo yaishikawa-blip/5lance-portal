@@ -49,6 +49,9 @@ service cloud.firestore {
     // スタッフ・シフト・お知らせの登録ができます）。
     match /staff/{id} { allow read, write: if isAllowedDomain(); }
     match /staffCompanies/{id} { allow read, write: if isAllowedDomain(); }
+    // スタッフのGoogleアカウント一覧（アクセス許可の判定に使う予定のミラー）。
+    // ドキュメントIDは小文字化したメールアドレスです。
+    match /staffEmails/{email} { allow read, write: if isAllowedDomain(); }
     match /targets/{id} { allow read, write: if isAllowedDomain(); }
     match /notices/{id} { allow read, write: if isAllowedDomain(); }
     match /ashiftAgencies/{id} { allow read, write: if isAllowedDomain(); }
