@@ -68,6 +68,12 @@
         descEl.textContent =
           (deniedEmail || "このアカウント") +
           " は管理者によって利用を停止されています。心当たりがない場合は管理者にお問い合わせください。";
+    } else if (authState.status === "unregistered") {
+      if (titleEl) titleEl.textContent = "アクセスできません";
+      if (descEl)
+        descEl.textContent =
+          (deniedEmail || "このアカウント") +
+          " はスタッフとして登録されていません。管理者に、このGoogleアカウントを「スタッフ一覧」へ登録してもらってください。";
     } else {
       if (titleEl) titleEl.textContent = "5LANCEポータル";
       if (descEl) descEl.textContent = "続けるにはGoogleアカウントでログインしてください。";
@@ -121,18 +127,27 @@
       return;
     }
     var emailKey = String(user.email).toLowerCase();
-    firestore
-      .doc("blockedUsers/" + emailKey)
-      .get()
-      .then(function (snap) {
-        if (snap.exists) {
+    Promise.all([
+      firestore.doc("blockedUsers/" + emailKey).get(),
+      firestore.doc("staffEmails/" + emailKey).get(),
+    ])
+      .then(function (snaps) {
+        var blockedSnap = snaps[0];
+        var staffSnap = snaps[1];
+        if (blockedSnap.exists) {
           deniedEmail = user.email || "";
           authState = { status: "blocked", user: null };
           auth.signOut().catch(function () {});
-        } else {
-          authState = { status: "ok", user: user };
-          logAccess(user);
+          return;
         }
+        if (!staffSnap.exists) {
+          deniedEmail = user.email || "";
+          authState = { status: "unregistered", user: null };
+          auth.signOut().catch(function () {});
+          return;
+        }
+        authState = { status: "ok", user: user };
+        logAccess(user);
       })
       .catch(function () {
         // 確認できない場合は、安全側ではなく通常どおりログインさせる
