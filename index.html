@@ -351,6 +351,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 .ps-photogrid .ps-photo img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
 .ps-photogrid .ps-photo button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:0;border-radius:50%;width:20px;height:20px;font-size:12px;line-height:1;cursor:pointer}
 .ps-photogrid .ps-photo-empty{color:var(--sub);font-size:12px}
+#pastsites .psc-item{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--bg)}
+#pastsites .psc-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);margin-bottom:4px}
+#pastsites .psc-head b{color:var(--ink);font-size:13px}
+#pastsites .psc-head .psc-del{margin-left:auto;background:none;border:0;color:var(--bad);font-size:12px;cursor:pointer;padding:2px 6px}
+#pastsites .psc-body{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.6}
+#pastsites .psc-form{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#pastsites .psc-form select,#pastsites .psc-form textarea{width:100%;box-sizing:border-box;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+#pastsites .psc-form textarea{min-height:72px;resize:vertical}
 
 #pastsites .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
 #pastsites .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
@@ -737,6 +745,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 <div class="tw"><table><thead><tr><th>日付</th><th>MNP新規</th><th>ゴールド</th></tr></thead><tbody id="ps-d-days"></tbody></table></div>
 </div>
 <div class="card"><h2 style="margin:0 0 10px">現場写真</h2><div id="ps-d-photos" class="ps-photogrid"></div></div>
+<div class="card"><h2 style="margin:0 0 10px">コメント</h2>
+<div id="ps-c-list"></div>
+<div class="psc-form">
+<select id="ps-c-name" aria-label="コメントする人"></select>
+<textarea id="ps-c-body" maxlength="1000" placeholder="この現場についてのコメント（反省点・次回に活かすポイントなど）" aria-label="コメント"></textarea>
+<div><button class="btn" id="ps-c-post" type="button">コメントを投稿</button></div>
+</div>
+</div>
 </div>
 </section>
 <section id="dayoff" role="tabpanel" hidden>
@@ -2148,7 +2164,44 @@ function renderPsDetail(b){
   $("ps-d-photos").innerHTML=photos.length?photos.map(function(p){
     return '<div class="ps-photo"><a href="'+esc(p.url)+'" target="_blank" rel="noopener"><img src="'+esc(p.url)+'" alt="現場写真"></a></div>';
   }).join(""):'<span class="ps-photo-empty">写真はまだありません。</span>';
+  renderPsComments(b.id);
 }
+var psComments=[],psStaffNames=[],psCDb=null;
+var psMyName="";try{psMyName=localStorage.getItem("pscomment-name")||""}catch(e){}
+function psFmtTs(t){var d=new Date(t);return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+function renderPsCNames(){
+  var sel=$("ps-c-name"),cur=sel.value||psMyName;
+  sel.innerHTML='<option value="">名前を選択</option>'+psStaffNames.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>'}).join("");
+  if(cur&&psStaffNames.indexOf(cur)>-1)sel.value=cur;
+}
+function renderPsComments(bid){
+  var list=psComments.filter(function(c){return c.blockId===bid}).sort(function(a,b){return (a.ts||0)-(b.ts||0)});
+  $("ps-c-list").innerHTML=list.length?list.map(function(c){
+    return '<div class="psc-item"><div class="psc-head"><b>'+esc(c.name||"")+'</b><span>'+psFmtTs(c.ts||0)+'</span>'
+      +(c.name&&c.name===psMyName?'<button class="psc-del" data-cdel="'+esc(c.id)+'" type="button">削除</button>':"")
+      +'</div><div class="psc-body">'+esc(c.body||"")+'</div></div>';
+  }).join(""):'<span class="ps-photo-empty">コメントはまだありません。</span>';
+}
+$("ps-c-name").onchange=function(){
+  psMyName=this.value;
+  try{localStorage.setItem("pscomment-name",psMyName)}catch(e){}
+  if(psOpenBlockId)renderPsComments(psOpenBlockId);
+};
+$("ps-c-post").onclick=function(){
+  var nm=$("ps-c-name").value,body=$("ps-c-body").value.trim();
+  if(!psCDb||!psOpenBlockId)return;
+  if(!nm){$("ps-c-name").focus();alert("先に名前を選択してください。");return}
+  if(!body){$("ps-c-body").focus();return}
+  var btn=this;btn.disabled=true;
+  psCDb.collection("siteComments").add({blockId:psOpenBlockId,name:nm,body:body,ts:Date.now()}).then(function(){
+    $("ps-c-body").value="";btn.disabled=false;
+  },function(){btn.disabled=false;alert("投稿できませんでした。")});
+};
+$("ps-c-list").onclick=function(ev){
+  var b=ev.target.closest("[data-cdel]");if(!b||!psCDb)return;
+  if(!confirm("このコメントを削除しますか？"))return;
+  psCDb.doc("siteComments/"+b.dataset.cdel).delete().catch(function(){alert("削除できませんでした。")});
+};
 function openPsDetail(bid){
   var b=blocks.filter(function(x){return x.id===bid})[0];if(!b)return;
   psOpenBlockId=bid;
@@ -2182,9 +2235,11 @@ $("ps-tabs").onclick=function(ev){
 $("psa-period").onchange=renderAnalysis;
 claude.use("db").then(function(d){
   if(!d)return;
+  psCDb=d;
+  d.collection("siteComments").onSnapshot(function(sn){psComments=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});if(psOpenBlockId)renderPsComments(psOpenBlockId)},function(){});
   d.collection("ashiftBlocks").onSnapshot(function(sn){blocks=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
   d.collection("events").onSnapshot(function(sn){events=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
-  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};sn.docs.forEach(function(x){var v=x.data();if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
+  d.collection("staff").onSnapshot(function(sn){staffCompanyMap={};psStaffNames=[];sn.docs.forEach(function(x){var v=x.data();if(v.name)psStaffNames.push(v.name);if(v.individual)staffCompanyMap[v.name]="個";else if(v.company)staffCompanyMap[v.name]=v.company});psStaffNames.sort();renderPsCNames();renderPsList();refreshOpenPsDetail();renderAnalysis()},function(){});
 }).catch(function(){});
 })();
 
