@@ -1,7 +1,7 @@
 // 5LANCEポータル: ホーム画面アプリ用の最小構成サービスワーカー。
 // 同一オリジンのページ本体（HTML/CSS/JS/画像）だけをキャッシュし、
 // Firebase等への外部通信には一切関与しません（横取りしません）。
-var CACHE = "5lance-portal-v2";
+var CACHE = "5lance-portal-v3";
 self.addEventListener("install", function (e) {
   self.skipWaiting();
 });
@@ -28,7 +28,7 @@ self.addEventListener("fetch", function (e) {
   // 同一オリジン・GET以外は素通し（Firebase Auth/Firestore等の外部通信に干渉しない）
   if (e.request.method !== "GET" || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: "no-store" })
       .then(function (res) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) {
