@@ -24,6 +24,25 @@
         (document.body || document.documentElement).appendChild(el);
       }
       el.textContent = "エラー: " + msg + "（この表示を管理者に伝えてください）";
+      dbg("エラー " + msg);
+    } catch (e) {}
+  }
+  // URLの末尾に ?debug=1 を付けて開くと、ログインの状態を画面左下に表示する
+  var DEBUG = /[?&]debug=1/.test(location.search);
+  var dbgLines = [];
+  function dbg(msg) {
+    if (!DEBUG) return;
+    try {
+      dbgLines.push(new Date().toLocaleTimeString() + " " + msg);
+      var el = document.getElementById("dbg-panel");
+      if (!el) {
+        el = document.createElement("pre");
+        el.id = "dbg-panel";
+        el.style.cssText =
+          "position:fixed;left:0;right:0;bottom:0;z-index:99998;max-height:45vh;overflow:auto;margin:0;background:#111;color:#0f0;font-size:11px;line-height:1.4;padding:6px 8px;white-space:pre-wrap;word-break:break-all";
+        (document.body || document.documentElement).appendChild(el);
+      }
+      el.textContent = dbgLines.join("\n");
     } catch (e) {}
   }
   window.addEventListener("error", function (ev) {
@@ -148,6 +167,7 @@
     }
     // 会社ドメイン以外（Gmailなど）でも、スタッフ一覧に登録されていれば利用できる
     var domainOk = isAllowedEmail(user.email);
+    dbg("ログイン検知 email=" + user.email + " domainOk=" + domainOk);
     var emailKey = String(user.email).toLowerCase();
     Promise.all([
       firestore.doc("blockedUsers/" + emailKey).get(),
@@ -156,6 +176,7 @@
       .then(function (snaps) {
         var blockedSnap = snaps[0];
         var staffSnap = snaps[1];
+        dbg("blockedUsers=" + blockedSnap.exists + " staffEmails=" + staffSnap.exists);
         if (blockedSnap.exists) {
           deniedEmail = user.email || "";
           authState = { status: "blocked", user: null };
@@ -185,7 +206,10 @@
         }
       })
       .then(function () {
+        dbg("判定結果 status=" + authState.status);
         updateGateUI();
+        var g = document.getElementById("gate"), a = document.getElementById("app");
+        dbg("表示 gate.hidden=" + (g && g.hidden) + " app.hidden=" + (a && a.hidden));
         if (firstTime) settleReady();
       });
   });
