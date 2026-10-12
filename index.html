@@ -3092,6 +3092,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     },function(){});
   })();
   (function(){
+    function esc5(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
     var agAgencies=[],agBlocks=[],agEvents=[];
     var agCursor=new Date();agCursor.setDate(1);
     function ymdA(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -3155,6 +3156,7 @@ Promise.all([claude.use("user"),claude.use("db")]).then(function(r){
     db.collection("events").onSnapshot(function(sn){agEvents=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v});renderAgency()},function(){});
   })();
   (function(){
+    function esc5(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
     var nlNotices=[],nlReads=[],nlStaff=[];
     function fmtNl(t){var d=new Date(t);return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
     function renderNlSelect(){
