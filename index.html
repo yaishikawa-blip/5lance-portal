@@ -290,6 +290,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","
 #home .ranksum .box b.low{color:var(--bad)}
 #home .ranksum .box .pace-sub{display:block;margin-top:4px;font-size:12px;color:var(--sub);font-weight:400}
 #home .ranksum .box .pace-sub.done{color:var(--acc);font-weight:700}
+@media (max-width:600px){
+#home .rank-sub{font-size:11px;margin:0 0 8px;line-height:1.5}
+#home .rank-h{margin:10px 0 6px}
+#home .ranksum{grid-template-columns:1fr;gap:6px}
+#home .ranksum .box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 10px;padding:8px 12px;box-shadow:none}
+#home .ranksum .box small{flex:1 1 0;min-width:0;margin:0;font-size:12px}
+#home .ranksum .box b{flex:none;font-size:17px}
+#home .ranksum .box .pace-sub{flex:1 1 100%;margin:0;font-size:11px}
+}
 #home ul{list-style:none;margin:0;padding:0}
 #home li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;justify-content:space-between}
 #home li:last-child{border-bottom:0}
