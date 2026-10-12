@@ -22,7 +22,9 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/staffEmails/$(request.auth.token.email.lower()));
     }
     function isAllowedDomain() {
-      return isSignedIn() && emailDomain() in ['5lance.co.jp'] && !isBlocked() && isRegisteredStaff();
+      // 会社ドメイン以外（Gmailなど）でも、スタッフ一覧にGoogleアカウントが
+      // 登録されている人は利用できます（登録一覧が許可リストの役割をします）。
+      return isSignedIn() && !isBlocked() && isRegisteredStaff();
     }
     // 管理者は "admins" コレクションに自分のUID（Firebase AuthのUID）の
     // ドキュメントを1つ作成すると付与されます。Firebaseコンソールの

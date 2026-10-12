@@ -81,9 +81,9 @@
       if (descEl)
         descEl.textContent =
           (deniedEmail || "このアカウント") +
-          " では利用できません。許可されたドメイン（" +
+          " はスタッフとして登録されていません。会社のGoogleアカウント（" +
           allowedDomains.join("、") +
-          "）のGoogleアカウントでログインしてください。";
+          "）でログインするか、管理者に、このアカウントを「スタッフ一覧」へ登録してもらってください。";
     } else if (authState.status === "blocked") {
       if (titleEl) titleEl.textContent = "アクセスが停止されています";
       if (descEl)
@@ -146,14 +146,8 @@
       if (firstTime) settleReady();
       return;
     }
-    if (!isAllowedEmail(user.email)) {
-      deniedEmail = user.email || "";
-      authState = { status: "denied", user: null };
-      auth.signOut().catch(function () {});
-      updateGateUI();
-      if (firstTime) settleReady();
-      return;
-    }
+    // 会社ドメイン以外（Gmailなど）でも、スタッフ一覧に登録されていれば利用できる
+    var domainOk = isAllowedEmail(user.email);
     var emailKey = String(user.email).toLowerCase();
     Promise.all([
       firestore.doc("blockedUsers/" + emailKey).get(),
@@ -170,7 +164,7 @@
         }
         if (!staffSnap.exists) {
           deniedEmail = user.email || "";
-          authState = { status: "unregistered", user: null };
+          authState = { status: domainOk ? "unregistered" : "denied", user: null };
           auth.signOut().catch(function () {});
           return;
         }
@@ -179,10 +173,16 @@
       })
       .catch(function (err) {
         showDiag("ログイン確認に失敗 " + ((err && (err.code || err.message)) || ""));
-        // 確認できない場合は、安全側ではなく通常どおりログインさせる
+        // 確認できない場合は、会社ドメインの人だけ通常どおりログインさせる
         // （ネットワーク等の一時的な問題で全員がロックアウトされないように）
-        authState = { status: "ok", user: user };
-        logAccess(user);
+        if (domainOk) {
+          authState = { status: "ok", user: user };
+          logAccess(user);
+        } else {
+          deniedEmail = user.email || "";
+          authState = { status: "denied", user: null };
+          auth.signOut().catch(function () {});
+        }
       })
       .then(function () {
         updateGateUI();
