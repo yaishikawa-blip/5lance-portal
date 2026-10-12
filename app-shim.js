@@ -12,6 +12,28 @@
     return String(d).toLowerCase();
   });
 
+  // ---- 不具合調査用：エラーを画面上部に表示（真っ白になっても原因が分かるように） ----
+  function showDiag(msg) {
+    try {
+      var el = document.getElementById("diag-banner");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "diag-banner";
+        el.style.cssText =
+          "position:fixed;left:0;right:0;top:0;z-index:99999;background:#b3261e;color:#fff;font-size:12px;line-height:1.5;padding:6px 10px;word-break:break-all";
+        (document.body || document.documentElement).appendChild(el);
+      }
+      el.textContent = "エラー: " + msg + "（この表示を管理者に伝えてください）";
+    } catch (e) {}
+  }
+  window.addEventListener("error", function (ev) {
+    showDiag(ev && ev.message ? ev.message : "スクリプトエラー");
+  });
+  window.addEventListener("unhandledrejection", function (ev) {
+    var r = ev && ev.reason;
+    showDiag((r && (r.code || r.message)) || "通信エラー");
+  });
+
   firebase.initializeApp(cfg);
   var auth = firebase.auth();
   var firestore = firebase.firestore();
@@ -155,7 +177,8 @@
         authState = { status: "ok", user: user };
         logAccess(user);
       })
-      .catch(function () {
+      .catch(function (err) {
+        showDiag("ログイン確認に失敗 " + ((err && (err.code || err.message)) || ""));
         // 確認できない場合は、安全側ではなく通常どおりログインさせる
         // （ネットワーク等の一時的な問題で全員がロックアウトされないように）
         authState = { status: "ok", user: user };
