@@ -113,7 +113,13 @@
   auth.onAuthStateChanged(function (user) {
     var firstTime = authState.status === "pending";
     if (!user) {
-      authState = { status: "signedout", user: null };
+      // 登録なし/停止/ドメイン外で自動ログアウトした直後は、理由の表示を消さずに残す
+      // （消すと普通のログイン画面に戻り、ログインを繰り返しているように見えるため）
+      var keepReason =
+        authState.status === "denied" ||
+        authState.status === "blocked" ||
+        authState.status === "unregistered";
+      if (!keepReason) authState = { status: "signedout", user: null };
       updateGateUI();
       if (firstTime) settleReady();
       return;
@@ -167,6 +173,8 @@
       signinBtn.onclick = function () {
         signinBtn.disabled = true;
         var provider = new firebase.auth.GoogleAuthProvider();
+        // 複数のGoogleアカウントを使っている人が、毎回アカウントを選べるようにする
+        provider.setCustomParameters({ prompt: "select_account" });
         auth
           .signInWithPopup(provider)
           .catch(function (err) {
