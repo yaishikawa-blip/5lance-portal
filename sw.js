@@ -1,7 +1,7 @@
 // 5LANCEポータル: ホーム画面アプリ用の最小構成サービスワーカー。
 // 同一オリジンのページ本体（HTML/CSS/JS/画像）だけをキャッシュし、
 // Firebase等への外部通信には一切関与しません（横取りしません）。
-var CACHE = "5lance-portal-v3";
+var CACHE = "5lance-portal-v4";
 self.addEventListener("install", function (e) {
   self.skipWaiting();
 });
