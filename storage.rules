@@ -5,8 +5,10 @@ service firebase.storage {
     function emailDomain() {
       return request.auth.token.email.split('@')[1].lower();
     }
+    // ログイン済みのアカウントなら利用できます（アプリ側で、スタッフ一覧に登録された
+    // アカウントだけがログインを通過する仕組みのため、Gmailなどの登録済みスタッフも含みます）。
     function isAllowedDomain() {
-      return isSignedIn() && emailDomain() in ['5lance.co.jp'];
+      return isSignedIn();
     }
 
     // お知らせの添付ファイル：閲覧は社内の誰でも、アップロードは管理者パスワードを
@@ -16,6 +18,13 @@ service firebase.storage {
     // 参照する必要がありますが、Storageルールは軽量な用途のため、ここでは
     // 「ログイン済みの社内メンバーなら誰でもアップロード可」としています。
     match /notices/{allPaths=**} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain()
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // 現場の写真（目標設定画面からのアップロード先）
+    match /uploads/{allPaths=**} {
       allow read: if isAllowedDomain();
       allow write: if isAllowedDomain()
         && request.resource.size < 20 * 1024 * 1024;
