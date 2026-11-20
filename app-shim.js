@@ -396,17 +396,67 @@
     };
   }
 
-  // ---- assets（Firebase Storage）シム --------------------------------------
+  // ---- assets シム ----------------------------------------------------------
+  // 画像は縮小してデータURLにし、そのままFirestoreの文書に保存します（Storage不要・無料）。
+  // 画像以外のファイル（お知らせの添付など）は、Firebase Storageが使える場合のみ保存します。
+  function compressImage(file, maxSide, maxBytes) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+          var w = Math.max(1, Math.round(img.naturalWidth * scale));
+          var h = Math.max(1, Math.round(img.naturalHeight * scale));
+          var cv = document.createElement("canvas");
+          cv.width = w;
+          cv.height = h;
+          var ctx = cv.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          var q = 0.72,
+            out = cv.toDataURL("image/jpeg", q);
+          while (out.length > maxBytes && q > 0.3) {
+            q -= 0.08;
+            out = cv.toDataURL("image/jpeg", q);
+          }
+          URL.revokeObjectURL(url);
+          if (out.length > maxBytes) reject(new Error("too-large"));
+          else resolve(out);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("image-load"));
+      };
+      img.src = url;
+    });
+  }
   function makeAssetsShim() {
-    if (!storageAvailable) return null;
-    var storage;
-    try {
-      storage = firebase.storage();
-    } catch (e) {
-      return null;
+    var storage = null;
+    if (storageAvailable) {
+      try {
+        storage = firebase.storage();
+      } catch (e) {
+        storage = null;
+      }
     }
     return {
       upload: function (file) {
+        if (file && /^image\//.test(file.type || "") ) {
+          return compressImage(file, 1000, 170000).then(function (dataUrl) {
+            return {
+              id: "inline:" + Date.now() + "_" + Math.random().toString(36).slice(2),
+              url: dataUrl,
+              sizeBytes: dataUrl.length,
+              contentType: "image/jpeg",
+            };
+          });
+        }
+        if (!storage) return Promise.reject(new Error("storage-unavailable"));
         var path =
           "uploads/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "_" + file.name;
         var ref = storage.ref().child(path);
@@ -417,6 +467,7 @@
         });
       },
       delete: function (id) {
+        if (!storage || !id || String(id).indexOf("inline:") === 0) return Promise.resolve();
         return storage
           .ref()
           .child(id)
